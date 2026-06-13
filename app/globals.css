@@ -1,0 +1,139 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Doom × Neon colour tokens */
+    --bg-primary: #0a0a0f;
+    --bg-secondary: #111118;
+    --bg-tertiary: #1a1a24;
+
+    --accent-green: #39ff14;
+    --accent-magenta: #ff00ff;
+    --accent-blue: #00cfff;
+    --accent-gold: #ffd700;
+
+    --text-primary: #e8e8f0;
+    --text-secondary: #8888a8;
+    --text-muted: #444460;
+
+    --border: #2a2a3a;
+    --border-active: #39ff14;
+
+    /* shadcn/ui CSS variables mapped to Doom Neon */
+    --background: 240 33% 4%;
+    --foreground: 240 20% 93%;
+    --card: 240 18% 8%;
+    --card-foreground: 240 20% 93%;
+    --popover: 240 18% 8%;
+    --popover-foreground: 240 20% 93%;
+    --primary: 110 100% 54%;
+    --primary-foreground: 240 33% 4%;
+    --secondary: 240 14% 12%;
+    --secondary-foreground: 240 20% 93%;
+    --muted: 240 14% 12%;
+    --muted-foreground: 240 15% 60%;
+    --accent: 240 14% 12%;
+    --accent-foreground: 240 20% 93%;
+    --destructive: 300 100% 50%;
+    --destructive-foreground: 240 20% 93%;
+    --border: 240 16% 19%;
+    --input: 240 16% 19%;
+    --ring: 110 100% 54%;
+    --radius: 0.5rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-bg-primary text-text-primary font-body antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+
+  /* Custom scrollbar for Doom Neon aesthetic */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--text-muted);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+  }
+}
+
+@layer components {
+  /* Neon glow focus ring for interactive elements */
+  .neon-focus {
+    @apply outline-none ring-0 transition-all duration-200;
+  }
+
+  .neon-focus:focus-visible {
+    box-shadow: 0 0 0 2px rgba(57, 255, 20, 0.15);
+    border-color: var(--accent-green);
+  }
+
+  /* Neon button hover effect */
+  .neon-hover {
+    @apply transition-all duration-200;
+  }
+
+  .neon-hover:hover {
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+  }
+
+  .neon-hover:active {
+    transform: scale(0.97);
+  }
+
+  /* Card with subtle border glow on hover */
+  .neon-card {
+    @apply bg-bg-secondary border border-border rounded-lg transition-all duration-200;
+  }
+
+  .neon-card:hover {
+    border-color: rgba(57, 255, 20, 0.3);
+    box-shadow: 0 0 20px rgba(57, 255, 20, 0.05);
+  }
+
+  /* Status badge variants */
+  .badge-not-started {
+    @apply bg-text-muted/20 text-text-secondary;
+  }
+
+  .badge-in-progress {
+    @apply bg-accent-blue/20 text-accent-blue;
+  }
+
+  .badge-done {
+    @apply bg-accent-gold/20 text-accent-gold;
+  }
+
+  .badge-overdue {
+    @apply bg-accent-magenta/20 text-accent-magenta;
+  }
+}
+
+@layer utilities {
+  .text-gradient-neon {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
+  }
+}
