@@ -3,13 +3,13 @@
 import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { CalendarIcon, Upload, FileText, Type, CheckCircle2, Sparkles, AlertCircle } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { motion } from "framer-motion";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function ProjectBriefPage() {
   const router = useRouter();
@@ -172,7 +172,7 @@ export default function ProjectBriefPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-display font-bold text-text-primary mb-3 text-gradient-neon">Project Brief</h1>
         <p className="text-text-secondary">
-          Describe what you're building. Our AI will automatically parse this and generate a fully assigned task board for your team.
+          Describe what you&apos;re building. Our AI will automatically parse this and generate a fully assigned task board for your team.
         </p>
       </div>
 

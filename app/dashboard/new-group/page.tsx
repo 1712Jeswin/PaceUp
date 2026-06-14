@@ -207,7 +207,7 @@ export default function NewGroupPage() {
                   <CardHeader className="bg-bg-secondary/30 border-b border-border/50 pb-6">
                     <CardTitle className="font-display text-xl text-text-primary">Start a New Project Group</CardTitle>
                     <CardDescription className="text-text-secondary">
-                      Create your space. You'll receive an invite code to bring your team aboard.
+                      Create your space. You&apos;ll receive an invite code to bring your team aboard.
                     </CardDescription>
                   </CardHeader>
                   <form onSubmit={handleCreate}>
