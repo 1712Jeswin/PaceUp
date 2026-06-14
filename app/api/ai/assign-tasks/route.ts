@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { getAIModel } from "@/lib/ai";
 import { generateText } from "ai";
@@ -205,11 +206,24 @@ export async function POST(req: Request): Promise<NextResponse<ApiResponse>> {
       );
     }
 
+    // If already analysed, delete existing tasks and roles to allow re-assignment
     if (brief.status === "ANALYSED") {
-      return NextResponse.json(
-        { success: false, error: "This brief has already been analysed" },
-        { status: 409 }
-      );
+      await db.$transaction(async (tx) => {
+        // Delete existing tasks for this brief
+        await tx.task.deleteMany({
+          where: { projectBriefId: brief.id },
+        });
+        // Reset roles on group members
+        await tx.groupMember.updateMany({
+          where: { groupId: brief.groupId },
+          data: { role: null },
+        });
+        // Reset brief status to DRAFT for re-analysis
+        await tx.projectBrief.update({
+          where: { id: brief.id },
+          data: { status: "DRAFT" },
+        });
+      });
     }
 
     // Fetch all group members with their profiles
@@ -354,6 +368,10 @@ export async function POST(req: Request): Promise<NextResponse<ApiResponse>> {
         data: { status: "ANALYSED" },
       });
     });
+
+    revalidatePath(`/dashboard/group/${brief.groupId}`);
+    revalidatePath(`/dashboard/group/${brief.groupId}/tasks`);
+    revalidatePath('/dashboard');
 
     return NextResponse.json({
       success: true,

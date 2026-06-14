@@ -1,5 +1,8 @@
+export const dynamic = 'force-dynamic';
+
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { db } from "@/lib/db";
 import { TaskBoard } from "./task-board";
 
@@ -64,7 +67,7 @@ export default async function TasksPage({ params }: TasksPageProps) {
   // Fetch all tasks for this group, grouped by member
   const brief = await db.projectBrief.findUnique({
     where: { groupId },
-    select: { id: true },
+    select: { id: true, status: true },
   });
 
   if (!brief) {
@@ -99,6 +102,30 @@ export default async function TasksPage({ params }: TasksPageProps) {
     },
     orderBy: { createdAt: "asc" },
   });
+
+  // Brief exists but no tasks — AI hasn't run or failed
+  if (tasks.length === 0) {
+    return (
+      <div className="animate-fade-in">
+        <h1 className="text-2xl font-display font-bold mb-4">Task Board</h1>
+        <div className="neon-card p-8 text-center space-y-4">
+          <p className="text-text-secondary text-sm">
+            {brief.status === "DRAFT"
+              ? "A project brief exists, but AI task assignment hasn't been completed yet."
+              : "No tasks were generated for this project."}
+          </p>
+          {isCreator && (
+            <Link
+              href={`/dashboard/group/${groupId}/brief`}
+              className="inline-flex items-center justify-center px-6 py-2.5 rounded-lg bg-accent-green text-bg-primary font-display font-semibold text-sm neon-hover"
+            >
+              {brief.status === "DRAFT" ? "Retry AI Assignment" : "Re-submit Brief"}
+            </Link>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   // Group tasks by member
   const memberTaskMap = new Map<

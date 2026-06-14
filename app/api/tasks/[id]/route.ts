@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { TaskStatus } from "@prisma/client";
 import type { ApiResponse } from "@/types";
@@ -69,6 +70,9 @@ export async function PATCH(
         id: true,
         assignedUserId: true,
         status: true,
+        projectBrief: {
+          select: { groupId: true },
+        },
       },
     });
 
@@ -109,6 +113,9 @@ export async function PATCH(
         updatedAt: true,
       },
     });
+
+    revalidatePath(`/dashboard/group/${task.projectBrief.groupId}/tasks`);
+    revalidatePath(`/dashboard/group/${task.projectBrief.groupId}`);
 
     return NextResponse.json({
       success: true,

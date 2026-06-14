@@ -13,7 +13,7 @@ import type { AIProvider } from "@prisma/client";
 export const PROVIDER_MODELS: Record<AIProvider, string[]> = {
   CLAUDE: ["claude-sonnet-4-6", "claude-haiku-4-5"],
   OPENAI: ["gpt-4o", "gpt-4o-mini"],
-  GEMINI: ["gemini-1.5-pro", "gemini-1.5-flash"],
+  GEMINI: ["gemini-3.5-flash", "gemini-2.5-flash"],
   GROK: ["grok-2"],
 };
 

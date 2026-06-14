@@ -1,13 +1,22 @@
+export const dynamic = 'force-dynamic';
+
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { Plus, Users } from "lucide-react";
+import { Plus, Users, History } from "lucide-react";
+import { getOrCreateUser } from "@/lib/user";
+import { CopyButton } from "@/components/copy-button";
+import { PreviousGroupCard } from "@/components/previous-group-card";
 
 /**
  * /dashboard — Dashboard home page.
  *
- * Shows a list of groups the user belongs to.
+ * Shows:
+ * - User code under the welcome heading
+ * - Active groups (isActive === true)
+ * - Previous groups (isActive === false) with remove-from-history button
+ *
  * Hard block: redirects to /dashboard/profile/setup if profile is incomplete.
  */
 export default async function DashboardPage() {
@@ -17,15 +26,42 @@ export default async function DashboardPage() {
     redirect("/sign-in");
   }
 
+  // Ensure the user exists in the database
+  const baseUser = await getOrCreateUser(clerkId);
+
+  if (!baseUser) {
+    return (
+      <div className="flex items-center justify-center py-20 animate-fade-in">
+        <div className="text-center">
+          <div className="h-8 w-8 border-2 border-accent-green border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-text-secondary text-sm">
+            Setting up your account...
+          </p>
+          <p className="text-text-muted text-xs mt-1">
+            This takes a few seconds after sign-up.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Hard block: redirect to profile setup if not completed
+  if (baseUser.level === null) {
+    redirect("/dashboard/profile/setup");
+  }
+
+  // Now fetch the full user with group relations
   const user = await db.user.findUnique({
-    where: { clerkId },
+    where: { id: baseUser.id },
     select: {
       id: true,
       name: true,
-      level: true,
+      userCode: true,
       groupMembers: {
         select: {
           role: true,
+          isActive: true,
+          leftAt: true,
           group: {
             select: {
               id: true,
@@ -48,28 +84,11 @@ export default async function DashboardPage() {
   });
 
   if (!user) {
-    // User record hasn't been created by webhook yet — show a loading state
-    return (
-      <div className="flex items-center justify-center py-20 animate-fade-in">
-        <div className="text-center">
-          <div className="h-8 w-8 border-2 border-accent-green border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-text-secondary text-sm">
-            Setting up your account...
-          </p>
-          <p className="text-text-muted text-xs mt-1">
-            This takes a few seconds after sign-up.
-          </p>
-        </div>
-      </div>
-    );
+    redirect("/sign-in");
   }
 
-  // Hard block: redirect to profile setup if not completed
-  if (user.level === null) {
-    redirect("/dashboard/profile/setup");
-  }
-
-  const groups = user.groupMembers;
+  const activeGroups = user.groupMembers.filter((gm) => gm.isActive);
+  const previousGroups = user.groupMembers.filter((gm) => !gm.isActive);
 
   return (
     <div className="max-w-3xl mx-auto animate-fade-in">
@@ -78,10 +97,18 @@ export default async function DashboardPage() {
           <h1 className="text-2xl font-display font-bold">
             Welcome, {user.name.split(" ")[0]}
           </h1>
-          <p className="text-text-secondary text-sm mt-1">
-            {groups.length === 0
+          {user.userCode && (
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[10px] text-text-muted font-mono uppercase tracking-wider">
+                ID
+              </span>
+              <CopyButton text={user.userCode} label="user code" />
+            </div>
+          )}
+          <p className="text-text-secondary text-sm mt-2">
+            {activeGroups.length === 0
               ? "Create or join a group to get started."
-              : `You're in ${groups.length} ${groups.length === 1 ? "group" : "groups"}`}
+              : `You're in ${activeGroups.length} ${activeGroups.length === 1 ? "group" : "groups"}`}
           </p>
         </div>
 
@@ -94,7 +121,8 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
-      {groups.length === 0 ? (
+      {/* Active Groups */}
+      {activeGroups.length === 0 ? (
         <div className="neon-card p-12 text-center">
           <Users className="h-8 w-8 text-text-muted mx-auto mb-3" />
           <p className="text-text-secondary text-sm mb-2">
@@ -106,7 +134,7 @@ export default async function DashboardPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {groups.map(({ group, role }) => (
+          {activeGroups.map(({ group, role }) => (
             <Link
               key={group.id}
               href={`/dashboard/group/${group.id}`}
@@ -154,6 +182,28 @@ export default async function DashboardPage() {
               </div>
             </Link>
           ))}
+        </div>
+      )}
+
+      {/* Previous Groups */}
+      {previousGroups.length > 0 && (
+        <div className="mt-12">
+          <div className="flex items-center gap-2 mb-4">
+            <History className="h-4 w-4 text-text-muted" />
+            <h2 className="text-sm font-display font-semibold text-text-muted uppercase tracking-wider">
+              Previous Groups
+            </h2>
+          </div>
+          <div className="space-y-2">
+            {previousGroups.map(({ group, leftAt }) => (
+              <PreviousGroupCard
+                key={group.id}
+                groupId={group.id}
+                groupName={group.name}
+                leftAt={leftAt?.toISOString() ?? null}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>

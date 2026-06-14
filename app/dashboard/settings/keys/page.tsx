@@ -68,7 +68,8 @@ export default function AIKeysPage() {
 
   const handleSave = async (provider: AIProvider) => {
     const form = formState[provider];
-    if (!form.apiKey.trim()) {
+    const existingKey = savedKeys.find((k) => k.provider === provider);
+    if (!form.apiKey.trim() && !existingKey) {
       setError("API key is required");
       return;
     }
@@ -77,18 +78,27 @@ export default function AIKeysPage() {
     setSavingProvider(provider);
 
     try {
-      const existingKey = savedKeys.find((k) => k.provider === provider);
       const isFirstKey = savedKeys.length === 0 && !existingKey;
+
+      const payload: {
+        provider: AIProvider;
+        modelName: string;
+        isActive: boolean;
+        apiKey?: string;
+      } = {
+        provider,
+        modelName: form.modelName,
+        isActive: isFirstKey || existingKey?.isActive || false,
+      };
+
+      if (form.apiKey.trim()) {
+        payload.apiKey = form.apiKey.trim();
+      }
 
       const res = await fetch("/api/ai-keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          provider,
-          apiKey: form.apiKey,
-          modelName: form.modelName,
-          isActive: isFirstKey || existingKey?.isActive || false,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -278,7 +288,10 @@ export default function AIKeysPage() {
               <div className="flex gap-2">
                 <button
                   onClick={() => handleSave(provider)}
-                  disabled={savingProvider === provider || !form.apiKey.trim()}
+                  disabled={
+                    savingProvider === provider ||
+                    (!form.apiKey.trim() && (!savedKey || form.modelName === savedKey.modelName))
+                  }
                   className="px-4 py-1.5 rounded-md bg-accent-green/10 border border-accent-green/20 text-accent-green text-xs font-mono hover:bg-accent-green/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {savingProvider === provider ? "Saving..." : "Save Key"}

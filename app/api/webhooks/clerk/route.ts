@@ -4,6 +4,7 @@ import { WebhookEvent } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import type { ApiResponse } from "@/types";
+import { generateUniqueUserCode } from "@/lib/invite-code";
 
 /**
  * Clerk webhook handler — syncs Clerk users to the Neon User table.
@@ -77,12 +78,14 @@ export async function POST(req: Request): Promise<NextResponse<ApiResponse>> {
       }
 
       const name = [first_name, last_name].filter(Boolean).join(" ") || "User";
+      const userCode = await generateUniqueUserCode();
 
       await db.user.create({
         data: {
           clerkId: id,
           name,
           email: primaryEmail,
+          userCode,
         },
       });
 

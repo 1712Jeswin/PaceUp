@@ -1,9 +1,11 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import type { ApiResponse, SkillLanguage, SkillDomain } from "@/types";
 import { SKILL_LANGUAGES, SKILL_DOMAINS } from "@/types";
 import { UserLevel } from "@prisma/client";
+import { getOrCreateUser } from "@/lib/user";
 
 /**
  * PATCH /api/profile — Updates the user's skill profile.
@@ -77,6 +79,15 @@ export async function PATCH(req: Request): Promise<NextResponse<ApiResponse>> {
       );
     }
 
+    // Ensure the user exists in the database
+    const user = await getOrCreateUser(clerkId);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "Failed to resolve or create user profile." },
+        { status: 500 }
+      );
+    }
+
     const updatedUser = await db.user.update({
       where: { clerkId },
       data: {
@@ -91,6 +102,8 @@ export async function PATCH(req: Request): Promise<NextResponse<ApiResponse>> {
         level: true,
       },
     });
+
+    revalidatePath('/dashboard');
 
     return NextResponse.json({
       success: true,

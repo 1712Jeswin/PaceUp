@@ -1,19 +1,22 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import type { ApiResponse } from "@/types";
+import { getOrCreateUser } from "@/lib/user";
 
 /**
- * POST /api/groups/join — Joins a group by invite code.
+ * POST /api/groups/join — Submits a join request for a group by invite code.
  *
  * Body: { inviteCode: string }
  *
- * Returns: { success: true, data: { groupId } }
+ * Returns: { success: true, data: { status: "PENDING", groupName } }
  *
  * Checks:
  * - User must be authenticated
  * - Invite code must exist
- * - User must not already be a member of the group
+ * - User must not already be an active member of the group
+ * - User must not already have a pending join request
  */
 export async function POST(req: Request): Promise<NextResponse<ApiResponse>> {
   try {
@@ -26,10 +29,7 @@ export async function POST(req: Request): Promise<NextResponse<ApiResponse>> {
       );
     }
 
-    const user = await db.user.findUnique({
-      where: { clerkId },
-      select: { id: true },
-    });
+    const user = await getOrCreateUser(clerkId);
 
     if (!user) {
       return NextResponse.json(
@@ -50,7 +50,7 @@ export async function POST(req: Request): Promise<NextResponse<ApiResponse>> {
 
     const group = await db.group.findUnique({
       where: { inviteCode: inviteCode.trim() },
-      select: { id: true, name: true },
+      select: { id: true, name: true, createdById: true },
     });
 
     if (!group) {
@@ -60,7 +60,7 @@ export async function POST(req: Request): Promise<NextResponse<ApiResponse>> {
       );
     }
 
-    // Check for existing membership — index on (groupId, userId) makes this fast
+    // Check for existing active membership — index on (groupId, userId) makes this fast
     const existingMember = await db.groupMember.findUnique({
       where: {
         groupId_userId: {
@@ -68,31 +68,56 @@ export async function POST(req: Request): Promise<NextResponse<ApiResponse>> {
           userId: user.id,
         },
       },
-      select: { id: true },
+      select: { id: true, isActive: true },
     });
 
-    if (existingMember) {
+    if (existingMember?.isActive) {
       return NextResponse.json(
         { success: false, error: "You are already a member of this group" },
         { status: 409 }
       );
     }
 
-    await db.groupMember.create({
+    // Check for existing pending join request
+    const existingRequest = await db.invitation.findFirst({
+      where: {
+        groupId: group.id,
+        userId: user.id,
+        type: "JOIN_REQUEST",
+        status: "PENDING",
+      },
+      select: { id: true },
+    });
+
+    if (existingRequest) {
+      return NextResponse.json(
+        { success: false, error: "You already have a pending join request for this group" },
+        { status: 409 }
+      );
+    }
+
+    // Create the join request invitation
+    await db.invitation.create({
       data: {
         groupId: group.id,
         userId: user.id,
+        type: "JOIN_REQUEST",
+        status: "PENDING",
+        initiatedById: user.id,
       },
     });
 
+    revalidatePath('/dashboard');
+    revalidatePath(`/dashboard/group/${group.id}`);
+
     return NextResponse.json({
       success: true,
-      data: { groupId: group.id },
+      data: { status: "PENDING", groupName: group.name },
     });
   } catch (error) {
     console.error("[POST /api/groups/join] Error:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to join group" },
+      { success: false, error: "Failed to submit join request" },
       { status: 500 }
     );
   }

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { Sidebar } from "@/components/sidebar";
 import { UserButton } from "@clerk/nextjs";
+import { getOrCreateUser } from "@/lib/user";
 
 /**
  * Dashboard layout — wraps all /dashboard/* pages.
@@ -23,11 +24,8 @@ export default async function DashboardLayout({
     redirect("/sign-in");
   }
 
-  // Fetch the user to check profile completion
-  const user = await db.user.findUnique({
-    where: { clerkId },
-    select: { level: true },
-  });
+  // Fetch or create the user to check profile completion (fallback for local dev webhook delays)
+  const user = await getOrCreateUser(clerkId);
 
   // Hard block: if user exists but hasn't completed their profile, redirect.
   // Exception: if they're already on the setup page, don't create a redirect loop.

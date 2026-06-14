@@ -1,36 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import type { ApiResponse } from "@/types";
-
-const INVITE_CODE_LENGTH = 8;
-const INVITE_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-
-/**
- * Generates a random invite code, avoiding ambiguous characters (0, O, 1, l, I).
- * Retries up to 5 times if the code collides with an existing group.
- */
-async function generateUniqueInviteCode(): Promise<string> {
-  const MAX_RETRIES = 5;
-
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    let code = "";
-    for (let i = 0; i < INVITE_CODE_LENGTH; i++) {
-      code += INVITE_CODE_CHARS[Math.floor(Math.random() * INVITE_CODE_CHARS.length)];
-    }
-
-    const existing = await db.group.findUnique({
-      where: { inviteCode: code },
-      select: { id: true },
-    });
-
-    if (!existing) {
-      return code;
-    }
-  }
-
-  throw new Error("Failed to generate a unique invite code after maximum retries");
-}
+import { generateUniqueGroupCode } from "@/lib/invite-code";
 
 /**
  * POST /api/groups — Creates a new group.
@@ -83,7 +56,8 @@ export async function POST(req: Request): Promise<NextResponse<ApiResponse>> {
       );
     }
 
-    const inviteCode = await generateUniqueInviteCode();
+    const inviteCode = await generateUniqueGroupCode();
+
 
     // Transaction: create group + add creator as first member
     const group = await db.$transaction(async (tx) => {
@@ -109,6 +83,8 @@ export async function POST(req: Request): Promise<NextResponse<ApiResponse>> {
 
       return newGroup;
     });
+
+    revalidatePath('/dashboard');
 
     return NextResponse.json({
       success: true,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Clock } from "lucide-react";
 
 interface JoinGroupButtonProps {
   inviteCode: string;
@@ -9,13 +9,13 @@ interface JoinGroupButtonProps {
 }
 
 /**
- * Client component for the "Join Group" button on the invite page.
- * Calls POST /api/groups/join and redirects to the group dashboard on success.
+ * Client component for the "Request to Join" button on the invite page.
+ * Calls POST /api/groups/join to submit a join request (pending creator approval).
  */
-export function JoinGroupButton({ inviteCode, groupId }: JoinGroupButtonProps) {
-  const router = useRouter();
+export function JoinGroupButton({ inviteCode }: JoinGroupButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isRequestSent, setIsRequestSent] = useState(false);
 
   const handleJoin = async () => {
     setError(null);
@@ -31,17 +31,31 @@ export function JoinGroupButton({ inviteCode, groupId }: JoinGroupButtonProps) {
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error ?? "Failed to join group");
+        setError(data.error ?? "Failed to submit join request");
         return;
       }
 
-      router.push(`/dashboard/group/${groupId}`);
+      setIsRequestSent(true);
     } catch {
       setError("An unexpected error occurred");
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (isRequestSent) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-center gap-2 text-accent-blue">
+          <Clock className="h-5 w-5" />
+          <span className="text-sm font-mono">Request sent</span>
+        </div>
+        <p className="text-text-muted text-xs">
+          Waiting for the group creator to approve your request.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -53,10 +67,10 @@ export function JoinGroupButton({ inviteCode, groupId }: JoinGroupButtonProps) {
         {isLoading ? (
           <span className="flex items-center justify-center gap-2">
             <span className="h-4 w-4 border-2 border-bg-primary border-t-transparent rounded-full animate-spin" />
-            Joining...
+            Sending Request...
           </span>
         ) : (
-          "Join Group"
+          "Request to Join"
         )}
       </button>
 

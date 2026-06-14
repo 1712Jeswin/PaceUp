@@ -1,4 +1,4 @@
-import type { AIProvider, TaskStatus, UserLevel, BriefStatus } from "@prisma/client";
+import type { AIProvider, TaskStatus, UserLevel, BriefStatus, InvitationStatus, InvitationType } from "@prisma/client";
 
 // ============================================
 // API Response
@@ -95,4 +95,4 @@ export type SkillDomain = (typeof SKILL_DOMAINS)[number];
 // Re-exports for convenience
 // ============================================
 
-export type { AIProvider, TaskStatus, UserLevel, BriefStatus };
+export type { AIProvider, TaskStatus, UserLevel, BriefStatus, InvitationStatus, InvitationType };

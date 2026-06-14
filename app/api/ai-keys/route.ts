@@ -115,12 +115,38 @@ export async function POST(req: Request): Promise<NextResponse<ApiResponse>> {
       );
     }
 
-    // Validate API key
-    if (!apiKey || typeof apiKey !== "string" || apiKey.trim().length < 10) {
-      return NextResponse.json(
-        { success: false, error: "API key is required and must be at least 10 characters" },
-        { status: 400 }
-      );
+    // Check if a key already exists for this provider
+    const existingKey = await db.aIKey.findUnique({
+      where: {
+        userId_provider: {
+          userId: user.id,
+          provider: provider as AIProvider,
+        },
+      },
+    });
+
+    // Validate API key: required for new keys, optional for updating existing keys
+    let encryptedKey: string;
+    if (!existingKey) {
+      if (!apiKey || typeof apiKey !== "string" || apiKey.trim().length < 10) {
+        return NextResponse.json(
+          { success: false, error: "API key is required and must be at least 10 characters" },
+          { status: 400 }
+        );
+      }
+      encryptedKey = encryptKey(apiKey.trim());
+    } else {
+      if (apiKey) {
+        if (typeof apiKey !== "string" || apiKey.trim().length < 10) {
+          return NextResponse.json(
+            { success: false, error: "API key must be at least 10 characters" },
+            { status: 400 }
+          );
+        }
+        encryptedKey = encryptKey(apiKey.trim());
+      } else {
+        encryptedKey = existingKey.encryptedKey;
+      }
     }
 
     // Validate model name against allowed models for this provider
@@ -131,8 +157,6 @@ export async function POST(req: Request): Promise<NextResponse<ApiResponse>> {
         { status: 400 }
       );
     }
-
-    const encryptedKey = encryptKey(apiKey.trim());
 
     await db.$transaction(async (tx) => {
       // If setting this key as active, deactivate all others for this user

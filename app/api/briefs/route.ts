@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import type { ApiResponse } from "@/types";
 
@@ -118,14 +119,40 @@ export async function POST(req: Request): Promise<NextResponse<ApiResponse>> {
     // Check if a brief already exists for this group
     const existingBrief = await db.projectBrief.findUnique({
       where: { groupId },
-      select: { id: true },
+      select: { id: true, status: true },
     });
 
     if (existingBrief) {
-      return NextResponse.json(
-        { success: false, error: "A project brief already exists for this group" },
-        { status: 409 }
-      );
+      // If already analysed, lock it — no changes allowed
+      if (existingBrief.status === "ANALYSED") {
+        return NextResponse.json(
+          { success: false, error: "This brief has already been analysed. Tasks are assigned." },
+          { status: 409 }
+        );
+      }
+
+      // If still DRAFT (e.g. AI failed on first attempt), allow updating
+      const updatedBrief = await db.projectBrief.update({
+        where: { id: existingBrief.id },
+        data: {
+          ideaStatement: ideaStatement.trim(),
+          solutionApproach: solutionApproach.trim(),
+          deadline: deadlineDate,
+          scopeStatement: scopeStatement.trim(),
+        },
+        select: {
+          id: true,
+          groupId: true,
+          status: true,
+        },
+      });
+
+      revalidatePath(`/dashboard/group/${groupId}`);
+
+      return NextResponse.json({
+        success: true,
+        data: updatedBrief,
+      });
     }
 
     const brief = await db.projectBrief.create({
@@ -143,6 +170,8 @@ export async function POST(req: Request): Promise<NextResponse<ApiResponse>> {
       },
     });
 
+    revalidatePath(`/dashboard/group/${groupId}`);
+
     return NextResponse.json({
       success: true,
       data: brief,
@@ -155,3 +184,4 @@ export async function POST(req: Request): Promise<NextResponse<ApiResponse>> {
     );
   }
 }
+

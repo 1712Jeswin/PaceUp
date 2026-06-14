@@ -1,10 +1,14 @@
+export const dynamic = 'force-dynamic';
+
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { CopyButton } from "@/components/copy-button";
 import { HealthGauge } from "@/components/health-gauge";
+import { GroupInvitePanel } from "@/components/group-invite-panel";
 import { ArrowRight, FileText, ListTodo, Users } from "lucide-react";
+import { getOrCreateUser } from "@/lib/user";
 
 interface GroupDashboardProps {
   params: Promise<{ id: string }>;
@@ -14,7 +18,8 @@ interface GroupDashboardProps {
  * /dashboard/group/[id] — Group dashboard.
  *
  * Shows: group name, invite code (copy), member list with roles,
- * project brief summary, task board link, health score.
+ * project brief summary, task board link, health score,
+ * invite members panel (creator), leave group (non-creator).
  */
 export default async function GroupDashboardPage({
   params,
@@ -26,16 +31,14 @@ export default async function GroupDashboardPage({
     redirect("/sign-in");
   }
 
-  const user = await db.user.findUnique({
-    where: { clerkId },
-    select: { id: true },
-  });
+  // Fetch or create the user (webhook fallback)
+  const user = await getOrCreateUser(clerkId);
 
   if (!user) {
     redirect("/sign-in");
   }
 
-  // Verify membership
+  // Verify active membership
   const membership = await db.groupMember.findUnique({
     where: {
       groupId_userId: {
@@ -43,14 +46,14 @@ export default async function GroupDashboardPage({
         userId: user.id,
       },
     },
-    select: { id: true },
+    select: { id: true, isActive: true },
   });
 
-  if (!membership) {
+  if (!membership || !membership.isActive) {
     redirect("/dashboard");
   }
 
-  // Fetch group details
+  // Fetch group details — only active members
   const group = await db.group.findUnique({
     where: { id: groupId },
     select: {
@@ -59,6 +62,7 @@ export default async function GroupDashboardPage({
       inviteCode: true,
       createdById: true,
       members: {
+        where: { isActive: true },
         select: {
           userId: true,
           role: true,
@@ -130,7 +134,7 @@ export default async function GroupDashboardPage({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column: Members & Quick Actions */}
+        {/* Left column: Members, Quick Actions, Invite Panel */}
         <div className="lg:col-span-1 space-y-6">
           {/* Members */}
           <div className="neon-card p-5">
@@ -197,6 +201,9 @@ export default async function GroupDashboardPage({
               </Link>
             )}
           </div>
+
+          {/* Invite / Leave panel */}
+          <GroupInvitePanel groupId={groupId} isCreator={isCreator} />
         </div>
 
         {/* Right column: Brief summary & Stats */}

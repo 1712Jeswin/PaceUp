@@ -1,7 +1,10 @@
+export const dynamic = 'force-dynamic';
+
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { JoinGroupButton } from "./join-button";
+import { getOrCreateUser } from "@/lib/user";
 
 interface JoinPageProps {
   params: Promise<{ code: string }>;
@@ -10,7 +13,7 @@ interface JoinPageProps {
 /**
  * /join/[code] — Public page for joining a group via invite code.
  *
- * If user is signed in: shows group info + "Join Group" button.
+ * If user is signed in: shows group info + "Request to Join" button.
  * If user is not signed in: redirects to sign-up with a redirect back.
  */
 export default async function JoinPage({ params }: JoinPageProps) {
@@ -51,13 +54,12 @@ export default async function JoinPage({ params }: JoinPageProps) {
     redirect(`/sign-up?redirect_url=/join/${code}`);
   }
 
-  // Check if user is already a member
-  const user = await db.user.findUnique({
-    where: { clerkId },
-    select: { id: true },
-  });
+  // Check if user is already a member or has a pending request
+  const user = await getOrCreateUser(clerkId);
 
   let isAlreadyMember = false;
+  let hasPendingRequest = false;
+
   if (user) {
     const membership = await db.groupMember.findUnique({
       where: {
@@ -66,9 +68,22 @@ export default async function JoinPage({ params }: JoinPageProps) {
           userId: user.id,
         },
       },
-      select: { id: true },
+      select: { isActive: true },
     });
-    isAlreadyMember = !!membership;
+    isAlreadyMember = !!membership?.isActive;
+
+    if (!isAlreadyMember) {
+      const pendingRequest = await db.invitation.findFirst({
+        where: {
+          groupId: group.id,
+          userId: user.id,
+          type: "JOIN_REQUEST",
+          status: "PENDING",
+        },
+        select: { id: true },
+      });
+      hasPendingRequest = !!pendingRequest;
+    }
   }
 
   return (
@@ -98,6 +113,15 @@ export default async function JoinPage({ params }: JoinPageProps) {
               >
                 Go to Group Dashboard
               </a>
+            </div>
+          ) : hasPendingRequest ? (
+            <div className="space-y-3">
+              <p className="text-accent-blue text-sm font-mono">
+                Request already sent
+              </p>
+              <p className="text-text-muted text-xs">
+                Waiting for the group creator to approve your request.
+              </p>
             </div>
           ) : (
             <JoinGroupButton inviteCode={code} groupId={group.id} />
