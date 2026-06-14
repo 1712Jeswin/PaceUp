@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { CopyButton } from "@/components/copy-button";
 import { HealthGauge } from "@/components/health-gauge";
 import { GroupInvitePanel } from "@/components/group-invite-panel";
-import { ArrowRight, FileText, ListTodo, Users, User, ShieldAlert } from "lucide-react";
+import { ArrowRight, FileText, ListTodo, Users, ShieldAlert } from "lucide-react";
 import { getOrCreateUser } from "@/lib/user";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

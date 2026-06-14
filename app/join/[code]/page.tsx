@@ -106,7 +106,7 @@ export default async function JoinPage({ params }: JoinPageProps) {
           </div>
           
           <p className="text-text-muted text-[11px] font-mono uppercase tracking-[0.2em] mb-3">
-            You've been invited to join
+            You&apos;ve been invited to join
           </p>
           <h1 className="text-3xl font-display font-bold text-text-primary mb-3 text-gradient-neon">
             {group.name}
@@ -122,7 +122,7 @@ export default async function JoinPage({ params }: JoinPageProps) {
                 <div className="p-3 bg-accent-gold/10 border border-accent-gold/20 rounded-lg flex items-center justify-center gap-2 mb-4">
                   <ShieldAlert className="w-4 h-4 text-accent-gold" />
                   <p className="text-accent-gold text-sm font-mono">
-                    You're already a member
+                    You&apos;re already a member
                   </p>
                 </div>
                 <Button asChild className="w-full bg-accent-green text-bg-primary hover:bg-accent-green/80 neon-focus font-bold">

@@ -126,7 +126,7 @@ export default async function DashboardPage() {
               </div>
               <h3 className="text-text-primary font-medium mb-1">No active groups</h3>
               <p className="text-text-secondary text-sm max-w-sm">
-                You haven't joined any groups yet. Create a new group or use an invite code to join an existing one.
+                You haven&apos;t joined any groups yet. Create a new group or use an invite code to join an existing one.
               </p>
             </CardContent>
           </Card>
