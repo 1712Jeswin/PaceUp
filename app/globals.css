@@ -136,4 +136,19 @@
     @apply bg-clip-text text-transparent;
     background-image: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
   }
+
+  .glass-panel {
+    @apply bg-bg-secondary/60 backdrop-blur-md border border-border/50 shadow-lg;
+  }
+  
+  .glass-card {
+    @apply bg-bg-secondary/40 backdrop-blur-lg border border-border/50 rounded-xl transition-all duration-300;
+  }
+  
+  .glass-card:hover {
+    border-color: rgba(57, 255, 20, 0.4);
+    box-shadow: 0 0 25px rgba(57, 255, 20, 0.1);
+    transform: translateY(-2px);
+  }
 }
+

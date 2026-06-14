@@ -40,9 +40,13 @@ export default async function DashboardLayout({
       <Sidebar />
 
       {/* Main content area — offset by sidebar width on desktop */}
-      <div className="md:ml-64">
+      <div className="md:ml-64 relative min-h-screen flex flex-col">
+        {/* Background Gradients for Dashboard */}
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-accent-green/5 rounded-full blur-[128px] pointer-events-none -z-10" />
+        <div className="absolute bottom-1/4 right-0 w-96 h-96 bg-accent-blue/5 rounded-full blur-[128px] pointer-events-none -z-10" />
+
         {/* Top bar */}
-        <header className="sticky top-0 z-30 flex items-center justify-between px-6 py-3 bg-bg-primary/80 backdrop-blur-sm border-b border-border">
+        <header className="sticky top-0 z-30 flex items-center justify-between px-6 py-3 bg-bg-secondary/60 backdrop-blur-md border-b border-border/50">
           {/* Mobile logo */}
           <span className="md:hidden text-lg font-display font-bold text-gradient-neon">
             PaceUp
@@ -55,14 +59,14 @@ export default async function DashboardLayout({
             afterSignOutUrl="/"
             appearance={{
               elements: {
-                avatarBox: "h-8 w-8",
+                avatarBox: "h-9 w-9 ring-2 ring-accent-green/20 hover:ring-accent-green transition-all",
               },
             }}
           />
         </header>
 
         {/* Page content */}
-        <main className="p-6">{children}</main>
+        <main className="p-6 flex-1">{children}</main>
       </div>
     </div>
   );

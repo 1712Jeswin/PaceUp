@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 import {
   LayoutDashboard,
   KeyRound,
@@ -51,39 +53,46 @@ export function Sidebar() {
     {
       href: "/dashboard",
       label: "Dashboard",
-      icon: <LayoutDashboard className="h-4 w-4" />,
+      icon: <LayoutDashboard className="h-5 w-5" />,
     },
     {
       href: "/dashboard/new-group",
       label: "New Group",
-      icon: <Plus className="h-4 w-4" />,
+      icon: <Plus className="h-5 w-5" />,
       hasBadge: inviteCount > 0,
     },
     {
       href: "/dashboard/settings/keys",
       label: "AI Keys",
-      icon: <KeyRound className="h-4 w-4" />,
+      icon: <KeyRound className="h-5 w-5" />,
     },
     {
       href: "/dashboard/profile/setup",
       label: "Profile",
-      icon: <UserCircle className="h-4 w-4" />,
+      icon: <UserCircle className="h-5 w-5" />,
     },
   ];
 
   return (
-    <aside className="hidden md:flex flex-col w-64 h-screen bg-bg-secondary border-r border-border fixed left-0 top-0 z-40">
+    <aside className="hidden md:flex flex-col w-64 h-screen bg-bg-secondary/60 backdrop-blur-xl border-r border-border/50 fixed left-0 top-0 z-40 shadow-xl">
       {/* Logo */}
-      <div className="flex items-center gap-2 px-6 py-5 border-b border-border">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <span className="text-xl font-display font-bold text-gradient-neon">
-            PaceUp
-          </span>
+      <div className="flex items-center justify-start px-6 py-6 border-b border-border/50">
+        <Link href="/dashboard" className="flex items-center gap-3 transition-transform hover:scale-105">
+          <div className="relative w-8 h-8">
+            <Image
+              src="/assets/paceup-icon.png"
+              alt="PaceUp"
+              fill
+              className="object-contain drop-shadow-[0_0_8px_rgba(57,255,20,0.4)]"
+              priority
+            />
+          </div>
+          <span className="text-2xl font-display font-bold text-text-primary tracking-wide">PaceUp</span>
         </Link>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-4 py-6 space-y-2">
         {sidebarLinks.map((link) => {
           const isActive =
             pathname === link.href ||
@@ -93,30 +102,44 @@ export function Sidebar() {
             <Link
               key={link.href}
               href={link.href}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-body transition-all duration-200",
-                isActive
-                  ? "bg-accent-green/10 text-accent-green border border-accent-green/20"
-                  : "text-text-secondary hover:text-text-primary hover:bg-bg-tertiary border border-transparent"
-              )}
+              className="block relative group"
             >
-              {link.icon}
-              {link.label}
-              {link.hasBadge && (
-                <span className="ml-auto inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-accent-magenta text-[10px] font-mono font-bold text-white animate-pulse">
-                  {inviteCount}
-                </span>
+              {isActive && (
+                <motion.div
+                  layoutId="sidebar-active"
+                  className="absolute inset-0 bg-accent-green/10 rounded-lg border border-accent-green/30"
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                />
               )}
+              <div
+                className={cn(
+                  "relative flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium font-body transition-all duration-300 z-10",
+                  isActive
+                    ? "text-accent-green"
+                    : "text-text-secondary group-hover:text-text-primary group-hover:bg-bg-tertiary/50"
+                )}
+              >
+                {link.icon}
+                {link.label}
+                {link.hasBadge && (
+                  <span className="ml-auto inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-full bg-accent-magenta text-[10px] font-mono font-bold text-white shadow-[0_0_10px_rgba(255,0,255,0.6)] animate-pulse">
+                    {inviteCount}
+                  </span>
+                )}
+              </div>
             </Link>
           );
         })}
       </nav>
 
       {/* Bottom section */}
-      <div className="px-3 py-4 border-t border-border">
-        <p className="text-text-muted text-xs font-mono px-3">
-          Phase 1 — MVP Core
-        </p>
+      <div className="px-6 py-5 border-t border-border/50 bg-bg-tertiary/20">
+        <div className="flex items-center gap-3">
+          <div className="w-2 h-2 rounded-full bg-accent-green shadow-[0_0_8px_rgba(57,255,20,0.8)]" />
+          <p className="text-text-secondary text-xs font-mono">
+            System Online
+          </p>
+        </div>
       </div>
     </aside>
   );

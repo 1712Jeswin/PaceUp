@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, X, Search, Mail, Send, LogOut, UserPlus } from "lucide-react";
+import { Check, X, Search, Mail, Send, LogOut, UserPlus, ShieldAlert, Clock } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 interface SearchResult {
   id: string;
@@ -210,217 +214,226 @@ export function GroupInvitePanel({ groupId, isCreator }: GroupInvitePanelProps) 
 
   if (!isCreator) {
     return (
-      <div className="space-y-2">
-        {!showLeaveConfirm ? (
-          <button
-            onClick={() => setShowLeaveConfirm(true)}
-            className="flex items-center gap-2 w-full p-3 rounded-lg border border-accent-magenta/20 text-accent-magenta text-sm font-display hover:bg-accent-magenta/10 transition-colors"
-          >
-            <LogOut className="h-4 w-4" />
-            Leave Group
-          </button>
-        ) : (
-          <div className="neon-card p-4 border-accent-magenta/30">
-            <p className="text-sm text-text-primary mb-3">
-              Are you sure you want to leave this group?
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={handleLeaveGroup}
-                disabled={isLeaving}
-                className="flex-1 py-2 rounded-lg bg-accent-magenta text-white font-display text-sm font-semibold hover:bg-accent-magenta/90 disabled:opacity-50"
-              >
-                {isLeaving ? "Leaving..." : "Yes, leave"}
-              </button>
-              <button
-                onClick={() => setShowLeaveConfirm(false)}
-                className="flex-1 py-2 rounded-lg border border-border text-text-secondary font-display text-sm hover:bg-bg-tertiary"
-              >
-                Cancel
-              </button>
+      <Card className="glass-card overflow-hidden border-accent-magenta/20 hover:border-accent-magenta/50 transition-colors mt-6">
+        <CardContent className="p-0">
+          {!showLeaveConfirm ? (
+            <button
+              onClick={() => setShowLeaveConfirm(true)}
+              className="flex items-center justify-center gap-2 w-full p-4 text-accent-magenta text-sm font-display hover:bg-accent-magenta/10 transition-colors"
+            >
+              <LogOut className="h-4 w-4" />
+              Leave Group
+            </button>
+          ) : (
+            <div className="p-5 bg-accent-magenta/5">
+              <div className="flex items-center gap-2 mb-4 text-text-primary text-sm font-medium">
+                <ShieldAlert className="w-4 h-4 text-accent-magenta" />
+                Are you sure you want to leave this group?
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleLeaveGroup}
+                  disabled={isLeaving}
+                  variant="destructive"
+                  className="flex-1 bg-accent-magenta hover:bg-accent-magenta/90 text-white"
+                >
+                  {isLeaving ? "Leaving..." : "Yes, leave"}
+                </Button>
+                <Button
+                  onClick={() => setShowLeaveConfirm(false)}
+                  variant="outline"
+                  className="flex-1 border-border/50 text-text-secondary hover:bg-bg-tertiary"
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Invite by search */}
-      <div className="neon-card p-5">
-        <h2 className="text-sm font-display font-semibold text-text-primary mb-3 flex items-center gap-2">
-          <UserPlus className="h-4 w-4" />
-          Invite Members
-        </h2>
-
-        <div className="flex gap-2 mb-3">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            placeholder="Search by name or user code"
-            className="flex-1 px-3 py-2 rounded-lg bg-bg-primary border border-border text-text-primary placeholder:text-text-muted font-body text-sm neon-focus"
-          />
-          <button
-            onClick={handleSearch}
-            disabled={isSearching || searchQuery.trim().length < 2}
-            className="px-3 py-2 rounded-lg bg-accent-blue/10 text-accent-blue border border-accent-blue/20 hover:bg-accent-blue/20 transition-colors disabled:opacity-50"
-            aria-label="Search users"
-          >
-            <Search className="h-4 w-4" />
-          </button>
-        </div>
-
-        {searchMessage && (
-          <p className="text-xs text-text-muted mb-2">{searchMessage}</p>
-        )}
-
-        {searchResults.length > 0 && (
-          <div className="space-y-1">
-            {searchResults.map((result) => (
-              <div
-                key={result.id}
-                className="flex items-center justify-between py-2 px-2 rounded-md hover:bg-bg-tertiary/50"
-              >
-                <div>
-                  <p className="text-sm text-text-primary">{result.name}</p>
-                  <p className="text-[10px] text-text-muted font-mono">
-                    {result.userCode ?? "—"}
-                  </p>
-                </div>
-                <button
-                  onClick={() =>
-                    result.userCode && handleInviteUser(result.userCode)
-                  }
-                  disabled={
-                    invitingUserId === result.userCode || !result.userCode
-                  }
-                  className="px-3 py-1.5 rounded-md bg-accent-green/10 text-accent-green text-xs font-display hover:bg-accent-green/20 transition-colors disabled:opacity-50"
-                >
-                  {invitingUserId === result.userCode ? "Sending..." : "Invite"}
-                </button>
-              </div>
-            ))}
+      <Card className="glass-card">
+        <CardHeader className="p-4 pb-2">
+          <CardTitle className="text-sm font-display flex items-center gap-2">
+            <UserPlus className="h-4 w-4 text-accent-blue" />
+            Invite Members
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 pt-0">
+          <div className="flex gap-2 mb-3">
+            <Input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              placeholder="Search by name or user code"
+              className="flex-1 h-9 bg-bg-tertiary/50 border-border/50 focus-visible:ring-accent-blue"
+            />
+            <Button
+              size="icon"
+              onClick={handleSearch}
+              disabled={isSearching || searchQuery.trim().length < 2}
+              className="h-9 w-9 bg-accent-blue/10 text-accent-blue border border-accent-blue/20 hover:bg-accent-blue/20"
+            >
+              <Search className="h-4 w-4" />
+            </Button>
           </div>
-        )}
-      </div>
+
+          {searchMessage && (
+            <p className="text-[11px] text-text-muted mb-3 italic">{searchMessage}</p>
+          )}
+
+          {searchResults.length > 0 && (
+            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+              {searchResults.map((result) => (
+                <div
+                  key={result.id}
+                  className="flex items-center justify-between p-2 rounded-md bg-bg-tertiary/30 border border-border/30 hover:border-accent-blue/30 transition-colors"
+                >
+                  <div className="flex flex-col">
+                    <span className="text-sm text-text-primary font-medium">{result.name}</span>
+                    <span className="text-[10px] text-text-muted font-mono">
+                      {result.userCode ?? "—"}
+                    </span>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => result.userCode && handleInviteUser(result.userCode)}
+                    disabled={invitingUserId === result.userCode || !result.userCode}
+                    className="h-7 px-3 bg-accent-green/10 text-accent-green hover:bg-accent-green/20 text-xs"
+                  >
+                    {invitingUserId === result.userCode ? "Sending..." : "Invite"}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Invite by email */}
-      <div className="neon-card p-5">
-        <h2 className="text-sm font-display font-semibold text-text-primary mb-3 flex items-center gap-2">
-          <Mail className="h-4 w-4" />
-          Invite by Email
-        </h2>
+      <Card className="glass-card">
+        <CardHeader className="p-4 pb-2">
+          <CardTitle className="text-sm font-display flex items-center gap-2">
+            <Mail className="h-4 w-4 text-accent-gold" />
+            Invite by Email
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 pt-0">
+          <form onSubmit={handleEmailInvite} className="flex gap-2">
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="teammate@example.com"
+              required
+              disabled={isSendingEmail}
+              className="flex-1 h-9 bg-bg-tertiary/50 border-border/50 focus-visible:ring-accent-gold"
+            />
+            <Button
+              type="submit"
+              size="icon"
+              disabled={isSendingEmail || email.trim().length === 0}
+              className="h-9 w-9 bg-accent-gold/10 text-accent-gold border border-accent-gold/20 hover:bg-accent-gold/20"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </form>
 
-        <form onSubmit={handleEmailInvite} className="flex gap-2">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="teammate@example.com"
-            required
-            disabled={isSendingEmail}
-            className="flex-1 px-3 py-2 rounded-lg bg-bg-primary border border-border text-text-primary placeholder:text-text-muted font-body text-sm neon-focus disabled:opacity-50"
-          />
-          <button
-            type="submit"
-            disabled={isSendingEmail || email.trim().length === 0}
-            className="px-3 py-2 rounded-lg bg-accent-gold/10 text-accent-gold border border-accent-gold/20 hover:bg-accent-gold/20 transition-colors disabled:opacity-50"
-            aria-label="Send email invite"
-          >
-            <Send className="h-4 w-4" />
-          </button>
-        </form>
-
-        {emailMessage && (
-          <p
-            className={`text-xs mt-2 ${
-              emailMessage.type === "success"
-                ? "text-accent-green"
-                : "text-accent-magenta"
-            }`}
-          >
-            {emailMessage.text}
-          </p>
-        )}
-      </div>
+          {emailMessage && (
+            <div className={`mt-3 p-2 rounded text-[11px] flex items-center gap-2 border ${
+                emailMessage.type === "success"
+                  ? "bg-accent-green/5 border-accent-green/20 text-accent-green"
+                  : "bg-accent-magenta/5 border-accent-magenta/20 text-accent-magenta"
+              }`}
+            >
+              {emailMessage.type === "success" ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+              {emailMessage.text}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Pending Requests */}
-      <div className="neon-card p-5">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-display font-semibold text-text-primary flex items-center gap-2">
-            <UserPlus className="h-4 w-4" />
+      <Card className="glass-card">
+        <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-sm font-display flex items-center gap-2">
+            <Clock className="h-4 w-4 text-accent-magenta" />
             Pending Requests
-          </h2>
+          </CardTitle>
           {!hasLoadedRequests && (
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={loadPendingRequests}
               disabled={isLoadingRequests}
-              className="text-xs text-accent-blue hover:underline disabled:opacity-50"
+              className="h-6 px-2 text-xs text-accent-blue hover:text-accent-blue/80 hover:bg-accent-blue/10"
             >
               Load
-            </button>
+            </Button>
           )}
-        </div>
-
-        {isLoadingRequests ? (
-          <div className="flex justify-center py-4">
-            <div className="h-5 w-5 border-2 border-accent-green border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : !hasLoadedRequests ? (
-          <p className="text-xs text-text-muted">
-            Click &quot;Load&quot; to see pending join requests.
-          </p>
-        ) : pendingRequests.length === 0 ? (
-          <p className="text-xs text-text-muted">No pending requests.</p>
-        ) : (
-          <div className="space-y-2">
-            {pendingRequests.map((request) => (
-              <div
-                key={request.id}
-                className="flex items-center justify-between py-2 px-2 rounded-md bg-bg-primary/50"
-              >
-                <div>
-                  <p className="text-sm text-text-primary">
-                    {request.user?.name ?? request.email ?? "Unknown"}
-                  </p>
-                  <p className="text-[10px] text-text-muted font-mono">
-                    {request.type === "JOIN_REQUEST"
-                      ? "Join request"
-                      : `Email invite — ${request.email}`}
-                  </p>
-                </div>
-                {request.type === "JOIN_REQUEST" && (
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() =>
-                        handleRequestAction(request.id, "ACCEPT")
-                      }
-                      disabled={processingId === request.id}
-                      className="p-1.5 rounded-md bg-accent-green/10 text-accent-green hover:bg-accent-green/20 transition-colors disabled:opacity-50"
-                      aria-label="Accept request"
-                    >
-                      <Check className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={() =>
-                        handleRequestAction(request.id, "DECLINE")
-                      }
-                      disabled={processingId === request.id}
-                      className="p-1.5 rounded-md bg-accent-magenta/10 text-accent-magenta hover:bg-accent-magenta/20 transition-colors disabled:opacity-50"
-                      aria-label="Decline request"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
+        </CardHeader>
+        <CardContent className="p-4 pt-0">
+          {isLoadingRequests ? (
+            <div className="flex justify-center py-4">
+              <div className="h-5 w-5 border-2 border-accent-magenta border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : !hasLoadedRequests ? (
+            <p className="text-xs text-text-muted italic">
+              Click &quot;Load&quot; to fetch pending requests.
+            </p>
+          ) : pendingRequests.length === 0 ? (
+            <p className="text-xs text-text-muted italic">No pending requests at the moment.</p>
+          ) : (
+            <div className="space-y-2">
+              {pendingRequests.map((request) => (
+                <div
+                  key={request.id}
+                  className="flex items-center justify-between p-2 rounded-md bg-bg-tertiary/30 border border-border/30 hover:border-border/50 transition-colors"
+                >
+                  <div className="flex flex-col">
+                    <span className="text-sm text-text-primary font-medium">
+                      {request.user?.name ?? request.email ?? "Unknown"}
+                    </span>
+                    <Badge variant="outline" className="mt-1 w-fit text-[9px] border-text-muted/30 text-text-secondary bg-transparent px-1.5 py-0">
+                      {request.type === "JOIN_REQUEST"
+                        ? "Join request"
+                        : "Email invite"}
+                    </Badge>
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+                  {request.type === "JOIN_REQUEST" && (
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleRequestAction(request.id, "DECLINE")}
+                        disabled={processingId === request.id}
+                        className="h-6 w-6 rounded-md text-accent-magenta hover:bg-accent-magenta/10 hover:text-accent-magenta"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleRequestAction(request.id, "ACCEPT")}
+                        disabled={processingId === request.id}
+                        className="h-6 w-6 rounded-md text-accent-green hover:bg-accent-green/10 hover:text-accent-green"
+                      >
+                        <Check className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

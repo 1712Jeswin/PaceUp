@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2 } from "lucide-react";
+import { Trash2, ArchiveRestore } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface PreviousGroupCardProps {
   groupId: string;
@@ -48,26 +49,33 @@ export function PreviousGroupCard({
     : null;
 
   return (
-    <div className="neon-card p-4 opacity-60 hover:opacity-80 transition-opacity">
+    <div className="glass-panel rounded-lg p-4 opacity-70 hover:opacity-100 transition-all duration-300 group">
       <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-display font-semibold text-text-secondary">
-            {groupName}
-          </h3>
-          {leftDate && (
-            <p className="text-[10px] text-text-muted font-mono mt-1">
-              Left {leftDate}
-            </p>
-          )}
+        <div className="flex items-center gap-4">
+          <div className="p-2 bg-bg-secondary rounded-full border border-border/50 group-hover:border-accent-magenta/30 transition-colors">
+            <ArchiveRestore className="w-4 h-4 text-text-muted group-hover:text-accent-magenta" />
+          </div>
+          <div>
+            <h3 className="text-sm font-display font-semibold text-text-secondary group-hover:text-text-primary transition-colors">
+              {groupName}
+            </h3>
+            {leftDate && (
+              <p className="text-[10px] text-text-muted font-mono mt-1">
+                Archived {leftDate}
+              </p>
+            )}
+          </div>
         </div>
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={handleRemove}
           disabled={isDeleting}
-          className="p-2 rounded-md text-text-muted hover:text-accent-magenta hover:bg-accent-magenta/10 transition-colors disabled:opacity-50"
-          aria-label={`Remove ${groupName} from history`}
+          className="text-text-muted hover:text-accent-magenta hover:bg-accent-magenta/10"
+          title={`Remove ${groupName} from history`}
         >
           <Trash2 className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
     </div>
   );
