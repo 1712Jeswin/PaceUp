@@ -2,7 +2,14 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Check, X, Mail, UserPlus, Clock } from "lucide-react";
+import { Check, X, Mail, UserPlus, Clock, Plus, LogIn, Inbox } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { motion, AnimatePresence } from "framer-motion";
 
 type Tab = "create" | "join" | "invites";
 
@@ -151,226 +158,254 @@ export default function NewGroupPage() {
     }
   };
 
-  const tabs: { key: Tab; label: string; badge?: number }[] = [
-    { key: "create", label: "Create Group" },
-    { key: "join", label: "Join Group" },
-    {
-      key: "invites",
-      label: "Invite Requests",
-      badge: invites.length > 0 ? invites.length : undefined,
-    },
-  ];
-
   return (
-    <div className="max-w-lg mx-auto animate-fade-in">
-      {/* Tab bar */}
-      <div className="flex border-b border-border mb-8">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`relative flex items-center gap-2 px-4 py-3 text-sm font-display transition-colors border-b-2 -mb-px ${
-              activeTab === tab.key
-                ? "border-accent-green text-accent-green"
-                : "border-transparent text-text-secondary hover:text-text-primary"
-            }`}
-          >
-            {tab.label}
-            {tab.badge && (
-              <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-accent-magenta text-[10px] font-mono font-bold text-white">
-                {tab.badge}
-              </span>
+    <div className="max-w-2xl mx-auto animate-fade-in py-10 relative">
+      
+      {/* Dynamic Background */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-accent-blue/5 rounded-full blur-[150px] pointer-events-none -z-10" />
+
+      <h1 className="text-3xl font-display font-bold text-text-primary mb-8 text-center">
+        Group Management
+      </h1>
+
+      <Tabs 
+        value={activeTab} 
+        onValueChange={(val) => setActiveTab(val as Tab)} 
+        className="w-full"
+      >
+        <TabsList className="grid w-full grid-cols-3 bg-bg-secondary/50 backdrop-blur-md border border-border/50 p-1 rounded-xl h-14 mb-8">
+          <TabsTrigger value="create" className="rounded-lg data-[state=active]:bg-accent-green/20 data-[state=active]:text-accent-green transition-all data-[state=active]:shadow-[0_0_15px_rgba(57,255,20,0.1)]">
+            <Plus className="w-4 h-4 mr-2" />
+            Create
+          </TabsTrigger>
+          <TabsTrigger value="join" className="rounded-lg data-[state=active]:bg-accent-blue/20 data-[state=active]:text-accent-blue transition-all data-[state=active]:shadow-[0_0_15px_rgba(0,207,255,0.1)]">
+            <LogIn className="w-4 h-4 mr-2" />
+            Join
+          </TabsTrigger>
+          <TabsTrigger value="invites" className="rounded-lg data-[state=active]:bg-accent-magenta/20 data-[state=active]:text-accent-magenta transition-all data-[state=active]:shadow-[0_0_15px_rgba(255,0,255,0.1)] relative">
+            <Inbox className="w-4 h-4 mr-2" />
+            Invites
+            {invites.length > 0 && (
+              <Badge variant="destructive" className="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center p-0 text-[10px] bg-accent-magenta text-white animate-pulse">
+                {invites.length}
+              </Badge>
             )}
-          </button>
-        ))}
-      </div>
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Create Group Tab */}
-      {activeTab === "create" && (
-        <div>
-          <h1 className="text-2xl font-display font-bold mb-2">
-            Create a Group
-          </h1>
-          <p className="text-text-secondary text-sm mb-8">
-            Start a new project group. You&apos;ll get an invite code to share
-            with your team.
-          </p>
-
-          <form onSubmit={handleCreate} className="space-y-6">
-            <div>
-              <label
-                htmlFor="group-name"
-                className="block text-sm font-medium text-text-primary mb-2"
+        <AnimatePresence mode="wait">
+          {/* Create Group Tab */}
+          <TabsContent value="create" asChild forceMount>
+            {activeTab === "create" && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
               >
-                Group Name
-              </label>
-              <input
-                id="group-name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g., Team Alpha — Capstone Project"
-                maxLength={100}
-                required
-                disabled={isCreating}
-                className="w-full px-4 py-2.5 rounded-lg bg-bg-tertiary border border-border text-text-primary placeholder:text-text-muted font-body text-sm neon-focus disabled:opacity-50"
-              />
-            </div>
+                <Card className="glass-card overflow-hidden">
+                  <CardHeader className="bg-bg-secondary/30 border-b border-border/50 pb-6">
+                    <CardTitle className="font-display text-xl text-text-primary">Start a New Project Group</CardTitle>
+                    <CardDescription className="text-text-secondary">
+                      Create your space. You'll receive an invite code to bring your team aboard.
+                    </CardDescription>
+                  </CardHeader>
+                  <form onSubmit={handleCreate}>
+                    <CardContent className="pt-6 pb-6">
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="group-name" className="text-text-secondary">Group Name</Label>
+                          <Input
+                            id="group-name"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="e.g., Team Alpha — Capstone Project"
+                            maxLength={100}
+                            required
+                            disabled={isCreating}
+                            className="h-12 bg-bg-tertiary/50 border-border/50 focus-visible:ring-accent-green"
+                          />
+                        </div>
 
-            {createError && (
-              <p className="text-accent-magenta text-sm" role="alert">
-                {createError}
-              </p>
+                        {createError && (
+                          <div className="p-3 rounded-md bg-accent-magenta/10 border border-accent-magenta/20 text-accent-magenta text-sm flex items-center gap-2">
+                            <X className="w-4 h-4" />
+                            {createError}
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                    <CardFooter className="bg-bg-tertiary/10 border-t border-border/50 pt-6">
+                      <Button
+                        type="submit"
+                        disabled={isCreating || name.trim().length === 0}
+                        className="w-full h-12 bg-accent-green text-bg-primary hover:bg-accent-green/80 neon-focus font-bold transition-all shadow-[0_0_15px_rgba(57,255,20,0.2)] hover:shadow-[0_0_20px_rgba(57,255,20,0.4)]"
+                      >
+                        {isCreating ? (
+                          <>
+                            <div className="h-4 w-4 border-2 border-bg-primary border-t-transparent rounded-full animate-spin mr-2" />
+                            Creating Group...
+                          </>
+                        ) : (
+                          "Create Group"
+                        )}
+                      </Button>
+                    </CardFooter>
+                  </form>
+                </Card>
+              </motion.div>
             )}
+          </TabsContent>
 
-            <button
-              type="submit"
-              disabled={isCreating || name.trim().length === 0}
-              className="w-full py-2.5 rounded-lg bg-accent-green text-bg-primary font-display font-semibold text-sm tracking-wide hover:bg-accent-green/90 active:scale-[0.97] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isCreating ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="h-4 w-4 border-2 border-bg-primary border-t-transparent rounded-full animate-spin" />
-                  Creating...
-                </span>
-              ) : (
-                "Create Group"
-              )}
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* Join Group Tab */}
-      {activeTab === "join" && (
-        <div>
-          <h1 className="text-2xl font-display font-bold mb-2">
-            Join a Group
-          </h1>
-          <p className="text-text-secondary text-sm mb-8">
-            Enter the invite code shared by your team leader. The group creator
-            will need to approve your request.
-          </p>
-
-          <form onSubmit={handleJoin} className="space-y-6">
-            <div>
-              <label
-                htmlFor="invite-code"
-                className="block text-sm font-medium text-text-primary mb-2"
+          {/* Join Group Tab */}
+          <TabsContent value="join" asChild forceMount>
+            {activeTab === "join" && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
               >
-                Invite Code
-              </label>
-              <input
-                id="invite-code"
-                type="text"
-                value={inviteCode}
-                onChange={(e) => setInviteCode(e.target.value)}
-                placeholder="e.g., bb3EJwRQ"
-                maxLength={8}
-                required
-                disabled={isJoining}
-                className="w-full px-4 py-2.5 rounded-lg bg-bg-tertiary border border-border text-text-primary placeholder:text-text-muted font-mono text-sm tracking-widest text-center neon-focus disabled:opacity-50"
-              />
-            </div>
+                <Card className="glass-card overflow-hidden">
+                  <CardHeader className="bg-bg-secondary/30 border-b border-border/50 pb-6">
+                    <CardTitle className="font-display text-xl text-text-primary">Join an Existing Group</CardTitle>
+                    <CardDescription className="text-text-secondary">
+                      Got an invite code? Enter it below to request access from the team leader.
+                    </CardDescription>
+                  </CardHeader>
+                  <form onSubmit={handleJoin}>
+                    <CardContent className="pt-6 pb-6">
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="invite-code" className="text-text-secondary">Invite Code</Label>
+                          <Input
+                            id="invite-code"
+                            value={inviteCode}
+                            onChange={(e) => setInviteCode(e.target.value)}
+                            placeholder="e.g., bb3EJwRQ"
+                            maxLength={8}
+                            required
+                            disabled={isJoining}
+                            className="h-14 text-center text-xl tracking-[0.25em] font-mono bg-bg-tertiary/50 border-border/50 focus-visible:ring-accent-blue placeholder:tracking-normal placeholder:text-sm"
+                          />
+                        </div>
 
-            {joinError && (
-              <p className="text-accent-magenta text-sm" role="alert">
-                {joinError}
-              </p>
-            )}
+                        {joinError && (
+                          <div className="p-3 rounded-md bg-accent-magenta/10 border border-accent-magenta/20 text-accent-magenta text-sm flex items-center gap-2">
+                            <X className="w-4 h-4" />
+                            {joinError}
+                          </div>
+                        )}
 
-            {joinSuccess && (
-              <div className="flex items-start gap-3 p-4 rounded-lg bg-accent-green/10 border border-accent-green/20">
-                <Clock className="h-5 w-5 text-accent-green flex-shrink-0 mt-0.5" />
-                <p className="text-accent-green text-sm">{joinSuccess}</p>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={isJoining || inviteCode.trim().length === 0}
-              className="w-full py-2.5 rounded-lg bg-accent-blue text-bg-primary font-display font-semibold text-sm tracking-wide hover:bg-accent-blue/90 active:scale-[0.97] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isJoining ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="h-4 w-4 border-2 border-bg-primary border-t-transparent rounded-full animate-spin" />
-                  Sending Request...
-                </span>
-              ) : (
-                "Request to Join"
-              )}
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* Invite Requests Tab */}
-      {activeTab === "invites" && (
-        <div>
-          <h1 className="text-2xl font-display font-bold mb-2">
-            Invite Requests
-          </h1>
-          <p className="text-text-secondary text-sm mb-8">
-            Invitations from group creators to join their teams.
-          </p>
-
-          {isLoadingInvites ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="h-6 w-6 border-2 border-accent-green border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : invites.length === 0 ? (
-            <div className="neon-card p-12 text-center">
-              <Mail className="h-8 w-8 text-text-muted mx-auto mb-3" />
-              <p className="text-text-secondary text-sm mb-2">
-                No pending invitations
-              </p>
-              <p className="text-text-muted text-xs">
-                When someone invites you to a group, it will appear here.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {invites.map((invite) => (
-                <div key={invite.id} className="neon-card p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm font-display font-semibold text-text-primary">
-                        {invite.group.name}
-                      </h3>
-                      <p className="text-[10px] text-text-muted font-mono mt-1">
-                        <UserPlus className="h-3 w-3 inline mr-1" />
-                        Invited by {invite.initiatedBy.name}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() =>
-                          handleInviteAction(invite.id, "ACCEPT")
-                        }
-                        disabled={processingId === invite.id}
-                        className="p-2 rounded-md bg-accent-green/10 text-accent-green hover:bg-accent-green/20 transition-colors disabled:opacity-50"
-                        aria-label="Accept invitation"
+                        {joinSuccess && (
+                          <div className="p-4 rounded-md bg-accent-green/10 border border-accent-green/20 flex items-start gap-3">
+                            <Clock className="w-5 h-5 text-accent-green shrink-0 mt-0.5" />
+                            <p className="text-accent-green text-sm">{joinSuccess}</p>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                    <CardFooter className="bg-bg-tertiary/10 border-t border-border/50 pt-6">
+                      <Button
+                        type="submit"
+                        disabled={isJoining || inviteCode.trim().length === 0}
+                        className="w-full h-12 bg-accent-blue text-bg-primary hover:bg-accent-blue/80 neon-focus font-bold transition-all shadow-[0_0_15px_rgba(0,207,255,0.2)] hover:shadow-[0_0_20px_rgba(0,207,255,0.4)]"
                       >
-                        <Check className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() =>
-                          handleInviteAction(invite.id, "DECLINE")
-                        }
-                        disabled={processingId === invite.id}
-                        className="p-2 rounded-md bg-accent-magenta/10 text-accent-magenta hover:bg-accent-magenta/20 transition-colors disabled:opacity-50"
-                        aria-label="Decline invitation"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+                        {isJoining ? (
+                          <>
+                            <div className="h-4 w-4 border-2 border-bg-primary border-t-transparent rounded-full animate-spin mr-2" />
+                            Sending Request...
+                          </>
+                        ) : (
+                          "Request to Join"
+                        )}
+                      </Button>
+                    </CardFooter>
+                  </form>
+                </Card>
+              </motion.div>
+            )}
+          </TabsContent>
+
+          {/* Invite Requests Tab */}
+          <TabsContent value="invites" asChild forceMount>
+            {activeTab === "invites" && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Card className="glass-card overflow-hidden min-h-[300px]">
+                  <CardHeader className="bg-bg-secondary/30 border-b border-border/50 pb-6">
+                    <CardTitle className="font-display text-xl text-text-primary flex items-center gap-2">
+                      Pending Invitations
+                    </CardTitle>
+                    <CardDescription className="text-text-secondary">
+                      Review and manage your pending group requests.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-6 pb-6">
+                    {isLoadingInvites ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-accent-magenta">
+                        <div className="h-8 w-8 border-4 border-current border-t-transparent rounded-full animate-spin mb-4" />
+                        <p className="text-sm font-medium">Checking invites...</p>
+                      </div>
+                    ) : invites.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <div className="w-16 h-16 rounded-full bg-bg-tertiary flex items-center justify-center mb-4 ring-1 ring-border">
+                          <Mail className="h-8 w-8 text-text-muted" />
+                        </div>
+                        <h3 className="text-text-primary font-medium mb-1">No pending invitations</h3>
+                        <p className="text-text-secondary text-sm max-w-[250px]">
+                          When a team leader invites you to their group, it will appear here.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {invites.map((invite) => (
+                          <div key={invite.id} className="p-4 rounded-xl bg-bg-tertiary/40 border border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 group hover:border-accent-magenta/30 transition-colors">
+                            <div>
+                              <h3 className="text-base font-display font-semibold text-text-primary group-hover:text-accent-magenta transition-colors">
+                                {invite.group.name}
+                              </h3>
+                              <div className="flex items-center gap-1.5 text-[11px] text-text-muted font-mono mt-1">
+                                <UserPlus className="h-3.5 w-3.5" />
+                                <span>Invited by <span className="text-text-secondary font-medium">{invite.initiatedBy.name}</span></span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleInviteAction(invite.id, "DECLINE")}
+                                disabled={processingId === invite.id}
+                                className="border-accent-magenta/30 text-accent-magenta hover:bg-accent-magenta/10 hover:text-accent-magenta"
+                              >
+                                {processingId === invite.id ? <div className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <X className="h-4 w-4 mr-1.5" />}
+                                Decline
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => handleInviteAction(invite.id, "ACCEPT")}
+                                disabled={processingId === invite.id}
+                                className="bg-accent-green text-bg-primary hover:bg-accent-green/80 shadow-[0_0_10px_rgba(57,255,20,0.2)]"
+                              >
+                                {processingId === invite.id ? <div className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Check className="h-4 w-4 mr-1.5" />}
+                                Accept
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+          </TabsContent>
+        </AnimatePresence>
+      </Tabs>
     </div>
   );
 }

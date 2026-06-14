@@ -5,6 +5,10 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { TaskBoard } from "./task-board";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { FileText, RotateCcw } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface TasksPageProps {
   params: Promise<{ id: string }>;
@@ -72,14 +76,26 @@ export default async function TasksPage({ params }: TasksPageProps) {
 
   if (!brief) {
     return (
-      <div className="animate-fade-in">
-        <h1 className="text-2xl font-display font-bold mb-4">Task Board</h1>
-        <div className="neon-card p-8 text-center">
-          <p className="text-text-secondary text-sm">
-            No project brief has been submitted yet. The group creator needs to
-            submit a brief first.
-          </p>
-        </div>
+      <div className="max-w-5xl mx-auto animate-fade-in relative py-8">
+        <h1 className="text-3xl font-display font-bold mb-8 text-gradient-neon">Project Tasks</h1>
+        <Card className="glass-card border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-20 text-center px-4">
+            <FileText className="w-12 h-12 text-text-muted mb-4 opacity-50" />
+            <h3 className="text-lg font-display font-semibold text-text-primary mb-2">
+              No project brief submitted yet
+            </h3>
+            <p className="text-text-secondary text-sm max-w-sm mx-auto mb-6">
+              The group creator needs to submit a project brief before the AI can generate and assign tasks.
+            </p>
+            {isCreator && (
+              <Button asChild className="bg-accent-green text-bg-primary hover:bg-accent-green/80 neon-focus font-bold">
+                <Link href={`/dashboard/group/${groupId}/brief`}>
+                  Submit Project Brief
+                </Link>
+              </Button>
+            )}
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -106,23 +122,30 @@ export default async function TasksPage({ params }: TasksPageProps) {
   // Brief exists but no tasks — AI hasn't run or failed
   if (tasks.length === 0) {
     return (
-      <div className="animate-fade-in">
-        <h1 className="text-2xl font-display font-bold mb-4">Task Board</h1>
-        <div className="neon-card p-8 text-center space-y-4">
-          <p className="text-text-secondary text-sm">
-            {brief.status === "DRAFT"
-              ? "A project brief exists, but AI task assignment hasn't been completed yet."
-              : "No tasks were generated for this project."}
-          </p>
-          {isCreator && (
-            <Link
-              href={`/dashboard/group/${groupId}/brief`}
-              className="inline-flex items-center justify-center px-6 py-2.5 rounded-lg bg-accent-green text-bg-primary font-display font-semibold text-sm neon-hover"
-            >
-              {brief.status === "DRAFT" ? "Retry AI Assignment" : "Re-submit Brief"}
-            </Link>
-          )}
-        </div>
+      <div className="max-w-5xl mx-auto animate-fade-in relative py-8">
+        <h1 className="text-3xl font-display font-bold mb-8 text-gradient-neon">Project Tasks</h1>
+        <Card className="glass-card border-dashed border-accent-gold/30">
+          <CardContent className="flex flex-col items-center justify-center py-20 text-center px-4">
+            <div className="p-4 bg-accent-gold/10 rounded-full mb-6 ring-1 ring-accent-gold/30">
+              <RotateCcw className="w-10 h-10 text-accent-gold" />
+            </div>
+            <h3 className="text-lg font-display font-semibold text-text-primary mb-2">
+              Task Generation Pending
+            </h3>
+            <p className="text-text-secondary text-sm max-w-sm mx-auto mb-6">
+              {brief.status === "DRAFT"
+                ? "A project brief exists, but AI task assignment hasn't been completed yet."
+                : "No tasks were generated for this project."}
+            </p>
+            {isCreator && (
+              <Button asChild className="bg-accent-gold text-bg-primary hover:bg-accent-gold/80 hover:shadow-[0_0_15px_rgba(255,215,0,0.3)] font-bold">
+                <Link href={`/dashboard/group/${groupId}/brief`}>
+                  {brief.status === "DRAFT" ? "Retry AI Assignment" : "Re-submit Brief"}
+                </Link>
+              </Button>
+            )}
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -159,12 +182,14 @@ export default async function TasksPage({ params }: TasksPageProps) {
   const roleMap = new Map(members.map((m) => [m.userId, m.role]));
 
   return (
-    <div className="animate-fade-in">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-display font-bold">Task Board</h1>
-        <span className="text-text-secondary text-sm font-mono">
-          {group.name}
-        </span>
+    <div className="max-w-7xl mx-auto animate-fade-in py-8">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-display font-bold text-gradient-neon mb-2">Project Task Board</h1>
+          <Badge variant="outline" className="border-border text-text-secondary bg-bg-secondary/50 font-mono text-xs">
+            {group.name}
+          </Badge>
+        </div>
       </div>
 
       <TaskBoard

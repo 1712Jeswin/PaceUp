@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { TaskStatus } from "@/types";
+import { Badge } from "@/components/ui/badge";
 
 interface StatusBadgeProps {
   status: TaskStatus;
@@ -12,19 +13,19 @@ const STATUS_CONFIG: Record<
 > = {
   NOT_STARTED: {
     label: "Not Started",
-    className: "badge-not-started",
+    className: "border-border/50 text-text-secondary bg-bg-secondary/50",
   },
   IN_PROGRESS: {
     label: "In Progress",
-    className: "badge-in-progress",
+    className: "border-accent-blue/40 text-accent-blue bg-accent-blue/10",
   },
   DONE: {
     label: "Done",
-    className: "badge-done",
+    className: "border-accent-gold/40 text-accent-gold bg-accent-gold/10",
   },
   OVERDUE: {
     label: "Overdue",
-    className: "badge-overdue",
+    className: "border-accent-magenta/40 text-accent-magenta bg-accent-magenta/10",
   },
 };
 
@@ -36,14 +37,15 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
   const config = STATUS_CONFIG[status];
 
   return (
-    <span
+    <Badge
+      variant="outline"
       className={cn(
-        "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono font-medium",
+        "px-2.5 py-0.5 text-xs font-mono font-medium rounded-full",
         config.className,
         className
       )}
     >
       {config.label}
-    </span>
+    </Badge>
   );
 }
