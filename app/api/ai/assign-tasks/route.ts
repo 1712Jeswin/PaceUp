@@ -57,6 +57,8 @@ function buildAssignmentUserPrompt(
     skills: unknown;
     domains: unknown;
     level: string | null;
+    profileData: unknown;
+    resumeText: string | null;
   }>
 ): string {
   const deadlineStr = brief.deadline.toISOString().split("T")[0];
@@ -65,13 +67,51 @@ function buildAssignmentUserPrompt(
   );
 
   const memberDescriptions = members
-    .map(
-      (m) =>
-        `- ${m.name} (userId: "${m.userId}")
+    .map((m) => {
+      let desc = `- ${m.name} (userId: "${m.userId}")
   Skills: ${JSON.stringify(m.skills)}
   Domains: ${JSON.stringify(m.domains)}
-  Level: ${m.level ?? "UNKNOWN"}`
-    )
+  Level: ${m.level ?? "UNKNOWN"}`;
+
+      // Include extended profile data if available
+      if (m.profileData && typeof m.profileData === "object") {
+        const pd = m.profileData as Record<string, unknown>;
+        if (pd.headline) desc += `\n  Headline: ${pd.headline}`;
+        if (pd.currentRole) desc += `\n  Current Role: ${pd.currentRole}`;
+        if (pd.yearsOfExperience !== undefined) desc += `\n  Years of Experience: ${pd.yearsOfExperience}`;
+        if (pd.education) desc += `\n  Education: ${pd.education}`;
+        if (Array.isArray(pd.languageProficiencies) && pd.languageProficiencies.length > 0) {
+          desc += `\n  Language Proficiencies: ${JSON.stringify(pd.languageProficiencies)}`;
+        }
+        if (Array.isArray(pd.frameworks) && pd.frameworks.length > 0) {
+          desc += `\n  Frameworks: ${JSON.stringify(pd.frameworks)}`;
+        }
+        if (Array.isArray(pd.tools) && pd.tools.length > 0) {
+          desc += `\n  Tools: ${JSON.stringify(pd.tools)}`;
+        }
+        if (Array.isArray(pd.databases) && pd.databases.length > 0) {
+          desc += `\n  Databases: ${JSON.stringify(pd.databases)}`;
+        }
+        if (Array.isArray(pd.preferredRoles) && pd.preferredRoles.length > 0) {
+          desc += `\n  Preferred Roles: ${JSON.stringify(pd.preferredRoles)}`;
+        }
+        if (pd.challengePreference) desc += `\n  Challenge Preference: ${pd.challengePreference}`;
+        if (Array.isArray(pd.previousProjects) && pd.previousProjects.length > 0) {
+          desc += `\n  Previous Projects: ${JSON.stringify(pd.previousProjects)}`;
+        }
+      }
+
+      // Include parsed resume text if available (truncated to avoid token bloat)
+      if (m.resumeText) {
+        const MAX_RESUME_CHARS = 2000;
+        const truncated = m.resumeText.length > MAX_RESUME_CHARS
+          ? m.resumeText.slice(0, MAX_RESUME_CHARS) + "...[truncated]"
+          : m.resumeText;
+        desc += `\n  Resume Summary: ${truncated}`;
+      }
+
+      return desc;
+    })
     .join("\n");
 
   return `PROJECT BRIEF:
@@ -238,6 +278,8 @@ export async function POST(req: Request): Promise<NextResponse<ApiResponse>> {
             skills: true,
             domains: true,
             level: true,
+            profileData: true,
+            resumeText: true,
           },
         },
       },
@@ -256,6 +298,8 @@ export async function POST(req: Request): Promise<NextResponse<ApiResponse>> {
       skills: m.user.skills,
       domains: m.user.domains,
       level: m.user.level,
+      profileData: m.user.profileData,
+      resumeText: m.user.resumeText,
     }));
 
     // Get the AI model using the group creator's active key

@@ -59,10 +59,12 @@ model User {
   userCode  String?    @unique @db.VarChar(8)
   name      String
   email     String     @unique
-  skills    Json       @default("[]")
-  domains   Json       @default("[]")
-  level     UserLevel?
-  createdAt DateTime   @default(now())
+  skills      Json       @default("[]")
+  domains     Json       @default("[]")
+  level       UserLevel?
+  profileData Json?
+  resumeText  String?    @db.Text
+  createdAt   DateTime   @default(now())
 
   groupsCreated        Group[]       @relation("GroupCreator")
   groupMembers         GroupMember[]
