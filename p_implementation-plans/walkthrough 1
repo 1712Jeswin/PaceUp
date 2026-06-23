@@ -1,0 +1,201 @@
+# PaceUp — Phase 1 MVP Core Walkthrough
+
+## Overview
+
+Phase 1 implements the core infrastructure and features for PaceUp, an AI project leader for student teams. The build compiles with **zero errors** across 21 routes and 15 static pages.
+
+---
+
+## Architecture
+
+```mermaid
+graph TD
+    subgraph Client
+        A["Landing Page /"] --> B["Sign Up / Sign In"]
+        B --> C["Dashboard /dashboard"]
+        C --> D["Profile Setup"]
+        C --> E["New Group"]
+        C --> F["AI Key Settings"]
+        C --> G["Group Dashboard"]
+        G --> H["Project Brief Form"]
+        G --> I["Task Board"]
+    end
+    subgraph API
+        J["POST /api/groups"]
+        K["POST /api/groups/join"]
+        L["PATCH /api/profile"]
+        M["GET/POST /api/ai-keys"]
+        N["POST /api/briefs"]
+        O["POST /api/ai/assign-tasks"]
+        P["PATCH /api/tasks/:id"]
+        Q["POST /api/webhooks/clerk"]
+    end
+    subgraph Infra
+        R["Neon PostgreSQL via Prisma"]
+        S["Clerk Auth"]
+        T["AI Providers via Vercel AI SDK"]
+        U["Upstash Redis stub"]
+        V["Resend Email stub"]
+    end
+    G --> J
+    G --> K
+    D --> L
+    F --> M
+    H --> N
+    H --> O
+    I --> P
+    S --> Q
+```
+
+---
+
+## Files Created
+
+### Project Config
+| File | Purpose |
+|------|---------|
+| [package.json](file:///j:/PaceUp/package.json) | Dependencies, scripts, postinstall hook |
+| [tsconfig.json](file:///j:/PaceUp/tsconfig.json) | Strict TypeScript with path aliases |
+| [next.config.js](file:///j:/PaceUp/next.config.js) | Next.js 14 config |
+| [tailwind.config.ts](file:///j:/PaceUp/tailwind.config.ts) | Doom Neon design tokens |
+| [.eslintrc.json](file:///j:/PaceUp/.eslintrc.json) | ESLint extending next/core-web-vitals |
+| [.env.local.example](file:///j:/PaceUp/.env.local.example) | All required env vars with descriptions |
+
+---
+
+### Database — [schema.prisma](file:///j:/PaceUp/prisma/schema.prisma)
+
+6 models with proper indexing:
+
+| Model | Key Fields | Notes |
+|-------|-----------|-------|
+| `User` | clerkId, skills[], domains[], level | Unique on clerkId |
+| `Group` | name, inviteCode, createdById | Unique on inviteCode |
+| `GroupMember` | groupId, userId, role | Compound unique (groupId, userId) — allows multi-group |
+| `ProjectBrief` | groupId, ideaStatement, deadline, status | Unique on groupId (1:1 via reverse relation) |
+| `Task` | projectBriefId, assignedUserId, status | Status pipeline: NOT_STARTED → IN_PROGRESS → DONE / OVERDUE |
+| `AIKey` | userId, provider, encryptedKey, isActive | Compound unique (userId, provider) — AES-256-GCM encrypted |
+
+---
+
+### Lib Layer
+
+| File | Purpose |
+|------|---------|
+| [lib/db.ts](file:///j:/PaceUp/lib/db.ts) | Prisma singleton (HMR-safe) |
+| [lib/crypto.ts](file:///j:/PaceUp/lib/crypto.ts) | AES-256-GCM encrypt/decrypt for API keys |
+| [lib/ai.ts](file:///j:/PaceUp/lib/ai.ts) | Provider routing — factory pattern for Claude/OpenAI/Gemini/Grok |
+| [lib/redis.ts](file:///j:/PaceUp/lib/redis.ts) | Upstash Redis stub (Phase 2: nag loop queues) |
+| [lib/resend.ts](file:///j:/PaceUp/lib/resend.ts) | Resend email stub (Phase 2: overdue notifications) |
+| [lib/utils.ts](file:///j:/PaceUp/lib/utils.ts) | cn() classname merge utility |
+| [types/index.ts](file:///j:/PaceUp/types/index.ts) | Shared TypeScript definitions |
+
+---
+
+### Authentication
+
+| File | Purpose |
+|------|---------|
+| [middleware.ts](file:///j:/PaceUp/middleware.ts) | Clerk middleware — protects /dashboard/*, allows public routes |
+| [app/(auth)/sign-in](file:///j:/PaceUp/app/(auth)/sign-in/[[...sign-in]]/page.tsx) | Clerk SignIn component with Doom Neon theme |
+| [app/(auth)/sign-up](file:///j:/PaceUp/app/(auth)/sign-up/[[...sign-up]]/page.tsx) | Clerk SignUp component with Doom Neon theme |
+| [api/webhooks/clerk](file:///j:/PaceUp/app/api/webhooks/clerk/route.ts) | Svix signature verified webhook → syncs users to Neon |
+
+---
+
+### API Routes (9 endpoints)
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| [/api/groups](file:///j:/PaceUp/app/api/groups/route.ts) | POST | Create group + auto-join creator as member |
+| [/api/groups/join](file:///j:/PaceUp/app/api/groups/join/route.ts) | POST | Join group by invite code |
+| [/api/profile](file:///j:/PaceUp/app/api/profile/route.ts) | PATCH | Update skill profile (languages, domains, level) |
+| [/api/ai-keys](file:///j:/PaceUp/app/api/ai-keys/route.ts) | GET/POST | List keys (masked) / Save encrypted key |
+| [/api/ai-keys/:id](file:///j:/PaceUp/app/api/ai-keys/[id]/route.ts) | DELETE/PATCH | Delete key / Toggle active status |
+| [/api/briefs](file:///j:/PaceUp/app/api/briefs/route.ts) | POST | Submit project brief (creator only) |
+| [/api/ai/assign-tasks](file:///j:/PaceUp/app/api/ai/assign-tasks/route.ts) | POST | AI-powered role + task assignment with retry logic |
+| [/api/tasks/:id](file:///j:/PaceUp/app/api/tasks/[id]/route.ts) | PATCH | Update task status (owner only, validated transitions) |
+| [/api/webhooks/clerk](file:///j:/PaceUp/app/api/webhooks/clerk/route.ts) | POST | Clerk user sync |
+
+All routes follow the `{ success, data?, error? }` response shape. All mutations use transactions. All authenticated routes verify ownership.
+
+---
+
+### Feature Pages (10 pages)
+
+| Page | Type | Key Features |
+|------|------|-------------|
+| [Landing /](file:///j:/PaceUp/app/page.tsx) | Static | Gradient title, CTA buttons, feature pills |
+| [Dashboard /dashboard](file:///j:/PaceUp/app/dashboard/page.tsx) | Server | Group list, hard block redirect to profile setup |
+| [Profile Setup](file:///j:/PaceUp/app/dashboard/profile/setup/page.tsx) | Client | Multi-select pills for languages/domains, card radio for level |
+| [New Group](file:///j:/PaceUp/app/dashboard/new-group/page.tsx) | Client | Name input → create group → redirect |
+| [AI Keys](file:///j:/PaceUp/app/dashboard/settings/keys/page.tsx) | Client | Per-provider key management with show/hide, active toggle |
+| [Group Dashboard](file:///j:/PaceUp/app/dashboard/group/[id]/page.tsx) | Server | Members, invite code copy, brief summary, health gauge |
+| [Project Brief](file:///j:/PaceUp/app/dashboard/group/[id]/brief/page.tsx) | Client | 4-field form → brief creation → AI assignment animation |
+| [Task Board](file:///j:/PaceUp/app/dashboard/group/[id]/tasks/page.tsx) | Server+Client | Per-member task cards with status badges and update buttons |
+| [Join /join/:code](file:///j:/PaceUp/app/join/[code]/page.tsx) | Server | Public invite page with group info and join button |
+| [Dashboard Layout](file:///j:/PaceUp/app/dashboard/layout.tsx) | Server | Sidebar + top bar with UserButton |
+
+---
+
+### Shared Components
+
+| Component | File | Type |
+|-----------|------|------|
+| Sidebar | [components/sidebar.tsx](file:///j:/PaceUp/components/sidebar.tsx) | Client |
+| StatusBadge | [components/status-badge.tsx](file:///j:/PaceUp/components/status-badge.tsx) | Server |
+| HealthGauge | [components/health-gauge.tsx](file:///j:/PaceUp/components/health-gauge.tsx) | Client |
+| CopyButton | [components/copy-button.tsx](file:///j:/PaceUp/components/copy-button.tsx) | Client |
+
+---
+
+## Security Checklist
+
+- [x] Svix webhook signature verification before processing
+- [x] AES-256-GCM encryption for API keys at rest
+- [x] Encrypted keys never sent to the client (masked preview only)
+- [x] All routes verify Clerk session server-side
+- [x] Row-level ownership checks (group creator, task owner, key owner)
+- [x] Input validation on all endpoints
+- [x] Try/catch on all DB writes
+- [x] Sanitised error messages (no stack traces exposed)
+- [x] `.env.local.example` with placeholders only
+
+---
+
+## Build Verification
+
+```
+✓ Compiled successfully
+✓ Linting and checking validity of types
+✓ Generating static pages (15/15)
+✓ 21 routes — zero errors, zero warnings
+```
+
+---
+
+## Next Steps (For You)
+
+> [!IMPORTANT]
+> Before running `npm run dev`, you need to:
+
+1. **Create `.env.local`** from `.env.local.example` and fill in real values:
+   - Clerk: publishable key, secret key, webhook secret
+   - Neon: `DATABASE_URL` from your Neon dashboard
+   - `AI_KEY_SECRET`: any 32-character string for encryption
+   - Redis and Resend keys are optional for Phase 1
+
+2. **Run the database migration**:
+   ```bash
+   npx prisma db push
+   ```
+   This will create all tables in your Neon database.
+
+3. **Set up the Clerk webhook** in the Clerk Dashboard → Webhooks → Add Endpoint:
+   - URL: `https://your-domain.com/api/webhooks/clerk`
+   - Events: `user.created`, `user.updated`
+
+4. **Start the dev server**:
+   ```bash
+   npm run dev
+   ```

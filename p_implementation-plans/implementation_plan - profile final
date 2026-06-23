@@ -1,0 +1,44 @@
+# Update Profile Section & Add Profile Summary Page
+
+The goal is to prefetch data from the database to fill in the necessary fields in the profile setup wizard. Furthermore, a single-page profile summary screen will be added, displaying essential user details (social media, name, bio, etc.) which fits on one screen and allows navigating back to the setup form to edit those fields. The new summary screen will be styled to match the dark, dramatic aesthetic (e.g., toxic green, electric magenta, cold blue, and molten gold) matching the `StitchMCP` prompt and your overarching visual requirements.
+
+## Proposed Changes
+
+### Dashboard Profile Component
+
+#### [NEW] `j:/PaceUp/app/dashboard/profile/page.tsx`
+Create a new Server Component that acts as the user's profile summary page.
+- Validates if the user is authenticated and fetches their data from the database.
+- If `profileData` does not exist, redirects the user to `/dashboard/profile/setup`.
+- Displays the user's name, headline, bio, location, education, current role, and a row of social media links.
+- Uses dynamic design elements in sync with the project's aesthetic (e.g., `bg-bg-tertiary`, neon accents, glow pulses).
+- Includes an "Edit Profile" button that securely redirects to `/dashboard/profile/setup`.
+
+### Profile Setup Components
+
+#### [MODIFY] `j:/PaceUp/app/dashboard/profile/setup/page.tsx`
+Refactor this file from a Client Component to a React Server Component.
+- Fetch the user's data from the DB using `getOrCreateUser(clerkId)`.
+- If the user has existing `profileData`, pass this information as `initialData` to a new Client Component to ensure the inputs are pre-filled upon visit.
+
+#### [NEW] `j:/PaceUp/app/dashboard/profile/setup/profile-setup-client.tsx`
+Extract the client-side wizard logic from the current `setup/page.tsx`.
+- Accept an optional `initialData` prop.
+- Merge the `initialData` with the `INITIAL_FORM_STATE` to pre-populate all form fields correctly.
+- Retain all form validation, transition animations, and patch requests just like before.
+
+## User Review Required
+
+> [!IMPORTANT]
+> The `@mcp:StitchMCP` mentions "follow the same theme for everything for the new UI components and design the newly updated profile page section". Since this project has a specific Tailwind config (`tailwind.config.ts`) with custom colors (`accent-green`, `bg-tertiary`, etc.), I will manually design this screen to match your "Dr. Doom × Doomsday Neon" aesthetic. If you strictly prefer me to run StitchMCP to *generate* the UI code using an AI provider through it, please let me know. Otherwise, I will build it natively using your existing Tailwind tokens.
+
+## Verification Plan
+
+### Automated Tests
+- Run `npm run build` or TS compiler checks to ensure types pass (especially for `ExtendedProfileData` handling).
+
+### Manual Verification
+- Go to `/dashboard/profile`, if profile is empty, ensure redirect to `/dashboard/profile/setup`.
+- Complete the setup wizard. Ensure successful save and redirect to `/dashboard`.
+- Re-navigate to `/dashboard/profile`. Verify that the single-page summary shows all details accurately with a polished neon design.
+- Click "Edit Profile" and verify that all inputs in the setup wizard are successfully pre-filled with the database values.

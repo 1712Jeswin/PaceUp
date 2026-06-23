@@ -1,0 +1,217 @@
+# Comprehensive Profile Setup Overhaul
+
+Transform the basic 3-field profile setup into an industry-standard, multi-step professional onboarding wizard that deeply understands the user's capabilities, experience, and work preferences — enabling the AI leader to assign roles and tasks with surgical precision.
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Schema expansion**: The `User` model currently stores `skills` (JSON), `domains` (JSON), and `level` (enum). This plan adds a new `profileData` (JSON) column to store all the extended profile information without breaking existing AI assignment logic. The existing `skills`, `domains`, and `level` fields remain as-is for backward compatibility.
+
+> [!IMPORTANT]
+> **Resume upload**: This uses browser-side FileReader to parse the resume into text (for PDF preview/display). The actual file is uploaded to the server as base64, then stored as a URL via Vercel Blob. If Vercel Blob is not yet configured, the resume file will be stored as base64 in the `profileData` JSON field temporarily. Let me know your preference.
+
+> [!WARNING]
+> **This is a frontend-heavy change.** The profile setup page grows from ~200 lines to ~1200+ lines across multiple components. The API route changes are minimal (accepting the new `profileData` field). No other pages are affected.
+
+## Open Questions
+
+1. **Resume storage**: Should the resume be uploaded to Vercel Blob (requires `BLOB_READ_WRITE_TOKEN` env var), or stored as metadata only (extracted text stored in DB, no file storage)?
+2. **Profile editability**: Should users be able to re-visit and edit their profile after initial setup, or is it one-time only? Currently there's no edit page — only the setup page with a hard block.
+3. **Minimum completion**: Should all 6 steps be mandatory, or should only Steps 1-3 be required and Steps 4-6 optional?
+
+---
+
+## Proposed Changes
+
+### Database Schema
+
+#### [MODIFY] [schema.prisma](file:///j:/PaceUp/prisma/schema.prisma)
+
+Add a `profileData` JSON column to the `User` model:
+
+```diff
+ model User {
+   id        String     @id @default(cuid())
+   clerkId   String     @unique
+   userCode  String?    @unique @db.VarChar(8)
+   name      String
+   email     String     @unique
+   skills    Json       @default("[]")
+   domains   Json       @default("[]")
+   level     UserLevel?
++  profileData Json?
++  resumeUrl   String?  @db.Text
+   createdAt DateTime   @default(now())
+   ...
+ }
+```
+
+The `profileData` JSON will store the full extended profile:
+
+```typescript
+interface ExtendedProfileData {
+  // Step 1: Personal Overview
+  headline: string;              // "Full-Stack Developer | ML Enthusiast"
+  bio: string;                   // 2-3 sentence professional summary
+  location: string;              // City, Country
+  linkedinUrl?: string;
+  githubUrl?: string;
+  portfolioUrl?: string;
+
+  // Step 2: Technical Skills (granular)
+  languageProficiencies: Array<{
+    language: string;
+    proficiency: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "EXPERT";
+    yearsOfExperience: number;
+  }>;
+  frameworks: string[];
+  tools: string[];               // Git, Docker, Figma, etc.
+  databases: string[];
+  cloudPlatforms: string[];
+
+  // Step 3: Professional Experience
+  currentRole: string;           // "Student" | "Intern" | "Junior Dev" | etc.
+  yearsOfExperience: number;
+  education: string;             // "B.Tech CS" | "M.Sc." | etc.
+  previousProjects: Array<{
+    name: string;
+    description: string;
+    role: string;
+    techStack: string[];
+  }>;
+
+  // Step 4: Work Style & Preferences
+  preferredRole: string[];       // "Team Lead" | "Backend Dev" | "Designer" | etc.
+  communicationStyle: string;    // "Async-first" | "Meetings" | "Hybrid"
+  availabilityHoursPerWeek: number;
+  timezone: string;
+  preferredWorkSchedule: string; // "Morning" | "Afternoon" | "Night Owl" | "Flexible"
+  teamSizePreference: string;   // "Solo" | "Small (2-4)" | "Medium (5-8)" | "Large (9+)"
+
+  // Step 5: Goals & Aspirations
+  learningGoals: string[];       // What they want to learn from projects
+  careerGoals: string;           // Short-term career direction
+  challengePreference: string;   // "Comfort Zone" | "Stretch" | "Deep End"
+  feedbackPreference: string;    // "Direct & Blunt" | "Constructive" | "Encouraging"
+
+  // Step 6: Resume (optional)
+  hasResume: boolean;
+}
+```
+
+---
+
+### Type Definitions
+
+#### [MODIFY] [index.ts](file:///j:/PaceUp/types/index.ts)
+
+- Add the `ExtendedProfileData` interface and all sub-types
+- Expand `SKILL_LANGUAGES` to include more languages
+- Add new constant arrays: `FRAMEWORKS`, `TOOLS`, `DATABASES`, `CLOUD_PLATFORMS`, `ROLES`, etc.
+
+---
+
+### Profile Setup Page — Multi-Step Wizard
+
+#### [MODIFY] [page.tsx](file:///j:/PaceUp/app/dashboard/profile/setup/page.tsx)
+
+Complete rewrite into a multi-step wizard with:
+
+**Step 1 — Personal Overview** (Tell us about yourself)
+- Professional headline (text input)
+- Short bio / professional summary (textarea, 280 char max)
+- Location (text input with autocomplete feel)
+- LinkedIn URL (optional)
+- GitHub URL (optional)
+- Portfolio URL (optional)
+
+**Step 2 — Technical Arsenal** (What can you build with?)
+- Programming languages — multi-select grid, PLUS a proficiency slider per selected language (Beginner → Intermediate → Advanced → Expert) and years of experience
+- Frameworks & libraries — searchable tag input (React, Next.js, Express, Django, Flask, Spring Boot, Flutter, etc.)
+- Tools — multi-select grid (Git, Docker, Kubernetes, Figma, Jira, Notion, VS Code, etc.)
+- Databases — multi-select (PostgreSQL, MySQL, MongoDB, Redis, Firebase, Supabase, etc.)
+- Cloud platforms — multi-select (AWS, GCP, Azure, Vercel, Netlify, etc.)
+
+**Step 3 — Professional Experience** (Your journey so far)
+- Current role — select (Student, Intern, Junior Developer, Mid-Level Developer, Senior Developer, Tech Lead, Designer, Product Manager, Researcher, Other)
+- Years of coding experience — slider (0-15+)
+- Education — text input
+- Previous projects — dynamic form (add/remove): project name, description, your role, tech stack tags
+- Up to 3 projects
+
+**Step 4 — Work Style & Preferences** (How do you work best?)
+- Preferred team roles — multi-select (Team Lead, Backend Developer, Frontend Developer, Full-Stack Developer, DevOps Engineer, UI/UX Designer, Data Scientist, QA/Tester, Documentation, Project Manager)
+- Communication style — single select cards (Async-first, Meeting-oriented, Hybrid)
+- Weekly availability — slider (1-40+ hours)
+- Timezone — select dropdown
+- Preferred work schedule — select cards (Early Bird, Afternoon, Night Owl, Flexible)
+- Team size preference — select cards (Solo, Small 2-4, Medium 5-8, Large 9+)
+
+**Step 5 — Goals & Aspirations** (Where are you heading?)
+- Learning goals — tag input (What skills do you want to develop?)
+- Career direction — textarea (Where do you see yourself in 2 years?)
+- Challenge preference — select cards (Comfort Zone, Stretch Goals, Deep End)
+- Feedback preference — select cards (Direct & Blunt, Constructive & Detailed, Encouraging & Supportive)
+
+**Step 6 — Resume Upload** (Optional — supercharge your profile)
+- Drag & drop zone for PDF/DOCX
+- File size limit: 5MB
+- Shows upload progress
+- Preview of uploaded filename
+- Skip button clearly visible
+- Disclaimer: "Your resume helps the AI leader understand your full background for better task assignment. It is stored securely and never shared."
+
+**Wizard UI Elements:**
+- Step indicator / progress bar at the top showing all 6 steps
+- Back / Next buttons with validation per step
+- Step titles with icons
+- Smooth slide transitions between steps
+- "Save & Continue Later" option (saves partial progress)
+- Final review step before submission
+
+---
+
+### New Components
+
+#### [NEW] [profile-step-indicator.tsx](file:///j:/PaceUp/components/profile-setup/profile-step-indicator.tsx)
+Progress bar component showing current step with step names and icons.
+
+#### [NEW] [skill-proficiency-picker.tsx](file:///j:/PaceUp/components/profile-setup/skill-proficiency-picker.tsx)
+Language card with proficiency slider and years input.
+
+#### [NEW] [searchable-tag-input.tsx](file:///j:/PaceUp/components/profile-setup/searchable-tag-input.tsx)
+Tag input with search/filter for frameworks, tools, etc.
+
+#### [NEW] [project-entry-form.tsx](file:///j:/PaceUp/components/profile-setup/project-entry-form.tsx)
+Dynamic project entry card (add up to 3 previous projects).
+
+#### [NEW] [resume-upload-zone.tsx](file:///j:/PaceUp/components/profile-setup/resume-upload-zone.tsx)
+Drag-and-drop file upload zone with progress indicator.
+
+#### [NEW] [step-card-selector.tsx](file:///j:/PaceUp/components/profile-setup/step-card-selector.tsx)
+Reusable card-based single/multi select component for work style preferences.
+
+---
+
+### API Route
+
+#### [MODIFY] [route.ts](file:///j:/PaceUp/app/api/profile/route.ts)
+
+- Accept the new `profileData` JSON field alongside the existing `skills`, `domains`, `level` fields
+- Accept optional `resumeUrl` field
+- Validate the structure of `profileData` before saving
+- The existing AI assignment engine reads `skills`, `domains`, and `level` — those remain populated from the wizard's Step 2 and the comfort level selection (moved from its own section to being derived from the experience data)
+
+---
+
+## Verification Plan
+
+### Manual Verification
+1. Navigate to `/dashboard/profile/setup` — confirm the multi-step wizard renders
+2. Complete each step — confirm validation works (required fields block progress)
+3. Go back between steps — confirm data is preserved
+4. Upload a resume (PDF) — confirm upload zone works
+5. Skip resume step — confirm submission works without it
+6. Submit the full profile — confirm redirect to `/dashboard`
+7. Check the database — confirm `profileData`, `skills`, `domains`, `level`, and optionally `resumeUrl` are all populated
+8. Verify the existing AI task assignment still works with a completed profile

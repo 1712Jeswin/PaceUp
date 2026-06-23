@@ -1,0 +1,153 @@
+# Fix: Data Staleness, AI Model, Brief Flow, Document Upload, Email Delivery, UI Redesign
+
+## Issues Identified
+
+| # | Issue | Root Cause |
+|---|---|---|
+| 1 | Data takes 15-20s or hard refresh to show | Next.js Server Component caching — no `revalidatePath()` after mutations, no `dynamic = 'force-dynamic'` |
+| 2 | AI fails: `gemini-1.5-pro is not found` | `gemini-1.5-pro` is deprecated. The `PROVIDER_MODELS` list in [ai.ts](file:///j:/PaceUp/lib/ai.ts#L13-L18) is stale |
+| 3 | After AI fails, "brief already exists" on retry | Brief is created in step 1, AI runs in step 2. If AI fails, brief persists → retry blocked by 409. No retry path exists |
+| 4 | Task board is empty even though brief exists | Expected when AI assignment failed. But the page shows no explanation or retry button |
+| 5 | Email invitations don't reach the recipient | Resend sandbox (`onboarding@resend.dev`) only delivers to the **account owner's email**. Cannot send to arbitrary recipients without a verified domain |
+| 6 | UI redesign wanted | Out of scope for this plan — handled separately via StitchMCP |
+
+---
+
+## Proposed Changes
+
+### Fix 1 — Data Staleness (Caching)
+
+The root cause is that Server Components in Next.js App Router aggressively cache data fetches. When a mutation happens (create group, join, accept invite), the cached page data is stale until Next.js re-renders.
+
+#### [MODIFY] [next.config.js](file:///j:/PaceUp/next.config.js)
+No change needed here. The fix is at the page/route level.
+
+#### [MODIFY] Dashboard pages — add `dynamic = 'force-dynamic'`
+Force real-time data on pages that must always show fresh data:
+- [page.tsx](file:///j:/PaceUp/app/dashboard/page.tsx) — Active/Previous Groups
+- [page.tsx](file:///j:/PaceUp/app/dashboard/group/%5Bid%5D/page.tsx) — Group Dashboard (members, brief)
+- [page.tsx](file:///j:/PaceUp/app/dashboard/group/%5Bid%5D/tasks/page.tsx) — Task Board
+- [page.tsx](file:///j:/PaceUp/app/join/%5Bcode%5D/page.tsx) — Join page
+- [layout.tsx](file:///j:/PaceUp/app/dashboard/layout.tsx) — Dashboard layout
+
+Each file gets `export const dynamic = 'force-dynamic';` at the top.
+
+#### [MODIFY] API mutation routes — add `revalidatePath`
+After every mutation that changes data visible on a page, call `revalidatePath()`:
+- [groups/route.ts](file:///j:/PaceUp/app/api/groups/route.ts) — after creating a group → revalidate `/dashboard`
+- [groups/join/route.ts](file:///j:/PaceUp/app/api/groups/join/route.ts) — after join request → revalidate `/dashboard`
+- [invitations/route.ts](file:///j:/PaceUp/app/api/invitations/route.ts) — after creating invite → revalidate group page
+- [invitations/[id]/route.ts](file:///j:/PaceUp/app/api/invitations/%5Bid%5D/route.ts) — after accept/decline → revalidate `/dashboard` + group page
+- [groups/[id]/leave/route.ts](file:///j:/PaceUp/app/api/groups/%5Bid%5D/leave/route.ts) — after leaving → revalidate `/dashboard`
+- [groups/[id]/previous/route.ts](file:///j:/PaceUp/app/api/groups/%5Bid%5D/previous/route.ts) — after removing → revalidate `/dashboard`
+- [briefs/route.ts](file:///j:/PaceUp/app/api/briefs/route.ts) — after creating brief → revalidate group page
+- [ai/assign-tasks/route.ts](file:///j:/PaceUp/app/api/ai/assign-tasks/route.ts) — after assigning → revalidate group + tasks page
+- [profile/route.ts](file:///j:/PaceUp/app/api/profile/route.ts) — after saving profile → revalidate `/dashboard`
+- [tasks/route.ts](file:///j:/PaceUp/app/api/tasks/route.ts) — after status update → revalidate tasks page
+
+#### [MODIFY] Client-side components — add `router.refresh()` after mutations
+Ensure all client components call `router.refresh()` after successful API calls. Some already do, others don't (e.g., the invite panel after sending an invite).
+
+---
+
+### Fix 2 — Gemini Model Name
+
+#### [MODIFY] [ai.ts](file:///j:/PaceUp/lib/ai.ts#L16)
+Update the `PROVIDER_MODELS` list:
+```diff
+-  GEMINI: ["gemini-1.5-pro", "gemini-1.5-flash"],
++  GEMINI: ["gemini-2.5-flash", "gemini-2.0-flash"],
+```
+
+> [!IMPORTANT]
+> If you already saved a key with `gemini-1.5-pro` as the model name, you'll need to delete it from Settings → AI Keys and re-add it with a valid model. The database stores the model name at save time.
+
+---
+
+### Fix 3 — Brief + AI Failure Loop
+
+The current flow: create brief → trigger AI. If AI fails, brief exists → retry blocked.
+
+**Fix**: Make the brief submission and AI assignment **idempotent**:
+
+#### [MODIFY] [brief/page.tsx](file:///j:/PaceUp/app/dashboard/group/%5Bid%5D/brief/page.tsx)
+- On submit: first check if a brief already exists for this group (GET query). If yes, skip creation and go straight to AI assignment.
+- Show "Retry AI Assignment" button when AI fails but brief exists.
+
+#### [MODIFY] [ai/assign-tasks/route.ts](file:///j:/PaceUp/app/api/ai/assign-tasks/route.ts#L208-L213)
+- Remove the `if (brief.status === "ANALYSED")` hard block.
+- Instead, if status is ANALYSED, **delete existing tasks** and re-run (allow re-assignment).
+- This lets the user retry after failure AND re-run if they want to regenerate tasks.
+
+#### [MODIFY] [briefs/route.ts](file:///j:/PaceUp/app/api/briefs/route.ts)
+- When a brief already exists and status is DRAFT, allow **updating** the brief fields instead of returning 409.
+- Only block if status is ANALYSED (brief is locked after successful analysis).
+
+---
+
+### Fix 4 — Empty Task Board with No Explanation
+
+#### [MODIFY] [tasks/page.tsx](file:///j:/PaceUp/app/dashboard/group/%5Bid%5D/tasks/page.tsx#L70-L82)
+- When brief exists but has 0 tasks AND status is DRAFT: show "AI assignment hasn't been run yet" + link to retry.
+- When brief exists but has 0 tasks AND status is ANALYSED: show "No tasks were generated" (edge case).
+
+---
+
+### Fix 5 — Email Delivery
+
+> [!WARNING]
+> **Resend sandbox limitation**: The `onboarding@resend.dev` sender can ONLY deliver to the email address associated with your Resend account. Sending to any other address will silently succeed (200 OK) but the email will NOT be delivered. This is a Resend policy, not a code bug.
+
+**Options:**
+1. **Add a verified domain in Resend** (e.g., `paceup.dev`) → change `FROM_ADDRESS` to `invite@paceup.dev`. This is the production fix.
+2. **For dev/testing**, the sandbox only works if the recipient is your own Resend account email. Document this clearly in the UI.
+
+#### [MODIFY] [email.ts](file:///j:/PaceUp/lib/email.ts)
+- Use `RESEND_FROM_EMAIL` env var instead of hardcoded `onboarding@resend.dev`.
+- Add response logging so failures are visible.
+
+#### [MODIFY] [invitations/route.ts](file:///j:/PaceUp/app/api/invitations/route.ts)
+- Return a warning message in the response when using the sandbox sender, so the UI can inform the user.
+
+---
+
+### Fix 6 — Document Upload for Brief Submission
+
+#### [MODIFY] [brief/page.tsx](file:///j:/PaceUp/app/dashboard/group/%5Bid%5D/brief/page.tsx)
+Add a toggle: "Paste text" vs "Upload document". When "Upload document" is selected:
+- Accept `.pdf`, `.docx`, `.txt`, `.md` files (max 5MB).
+- The document gets parsed client-side (for .txt/.md) or sent to a parse API.
+- Parsed text populates the four brief fields.
+
+#### [NEW] [api/briefs/parse/route.ts](file:///j:/PaceUp/app/api/briefs/parse/route.ts)
+- Accepts a file upload (FormData).
+- Uses the user's AI model to parse the document into the four fields (idea, approach, deadline, scope).
+- Returns the extracted fields so the user can review before submitting.
+
+> [!IMPORTANT]
+> PDF parsing requires a library. I recommend `pdf-parse` (3.7kB, no native deps). For DOCX, `mammoth` is the standard. Both are lightweight. Do you want me to install these, or should document upload only support `.txt` and `.md` files (zero deps)?
+
+---
+
+## Open Questions
+
+1. **Email domain**: Do you have a domain you can verify in Resend (e.g., `paceup.dev`)? If not, email invites will only work for testing with your own email address. Should I proceed with the env-var approach and document the limitation?
+
+2. **Document upload — file types**: Should I add `pdf-parse` and `mammoth` as dependencies for PDF/DOCX support? Or limit to `.txt`/`.md` only (zero new dependencies)?
+
+3. **UI redesign**: You mentioned `@mcp:StitchMCP` for the UI redesign. Should I handle that as a separate follow-up after these functional fixes are done? Or do you want both in one pass?
+
+4. **Gemini model**: The error shows you're using a Gemini API key. The valid models are now `gemini-2.5-flash` and `gemini-2.0-flash`. `gemini-1.5-pro` is deprecated. After I update the model list, you'll need to re-save your AI key with the new model name. Is that clear?
+
+---
+
+## Verification Plan
+
+### Manual Verification
+After implementation, test these flows:
+
+1. **Data freshness**: Create a group → sidebar updates immediately. Join a group → request appears on creator's dashboard without refresh. Accept invite → member list updates.
+2. **AI assignment**: Delete existing AI key → re-add with `gemini-2.5-flash`. Submit a brief → AI generates tasks. If AI fails → retry button appears → brief is not duplicated.
+3. **Task board**: Visit task board when brief exists but AI hasn't run → helpful message + retry link. Visit after AI runs → tasks displayed.
+4. **Email**: Send email invite → check Resend dashboard for delivery status. Note sandbox limitations.
+5. **Document upload**: Upload a `.txt` file → fields populated → review → submit.
