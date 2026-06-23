@@ -12,7 +12,7 @@ const MAX_PROJECTS = 3;
 
 interface ProjectEntryFormProps {
   projects: PreviousProject[];
-  onChange: (projects: PreviousProject[]) => void;
+  onChange: (_projects: PreviousProject[]) => void;
 }
 
 export function ProjectEntryForm({

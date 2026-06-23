@@ -3,6 +3,7 @@
 /.pnp
 .pnp.js
 .yarn/install-state.gz
+/p_implementation-plans/*
 
 # testing
 /coverage

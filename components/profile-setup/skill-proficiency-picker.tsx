@@ -15,7 +15,7 @@ import type { LanguageProficiency, ProficiencyLevel } from "@/types";
  */
 interface SkillProficiencyPickerProps {
   proficiencies: LanguageProficiency[];
-  onChange: (proficiencies: LanguageProficiency[]) => void;
+  onChange: (_proficiencies: LanguageProficiency[]) => void;
 }
 
 export function SkillProficiencyPicker({

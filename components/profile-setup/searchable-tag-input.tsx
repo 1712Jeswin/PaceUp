@@ -12,7 +12,7 @@ interface SearchableTagInputProps {
   placeholder?: string;
   suggestions: readonly string[];
   selectedTags: string[];
-  onTagsChange: (tags: string[]) => void;
+  onTagsChange: (_tags: string[]) => void;
   maxTags?: number;
   allowCustom?: boolean;
 }

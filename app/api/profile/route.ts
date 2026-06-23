@@ -15,9 +15,8 @@ import { getOrCreateUser } from "@/lib/user";
 async function extractPdfText(base64Data: string): Promise<string | null> {
   try {
     // Dynamic import to avoid bundling issues — pdf-parse is a server-only dependency
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any — pdf-parse v2.x has inconsistent type exports
-    const pdfParseModule = await import("pdf-parse") as any;
-    const pdfParse = pdfParseModule.default ?? pdfParseModule;
+    const pdfParseModule = await import("pdf-parse") as unknown as Record<string, unknown>;
+    const pdfParse = (pdfParseModule.default || pdfParseModule) as (_data: Buffer) => Promise<{ text?: string }>;
     const buffer = Buffer.from(base64Data, "base64");
     const result = await pdfParse(buffer);
     return result.text?.trim() || null;

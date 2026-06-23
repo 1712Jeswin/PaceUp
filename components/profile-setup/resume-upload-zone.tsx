@@ -18,7 +18,7 @@ const ACCEPTED_EXTENSIONS = ".pdf,.docx,.txt";
 
 interface ResumeUploadZoneProps {
   file: File | null;
-  onFileChange: (file: File | null) => void;
+  onFileChange: (_file: File | null) => void;
   error?: string | null;
 }
 

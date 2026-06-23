@@ -16,7 +16,7 @@ interface StepCardSelectorProps {
   label: string;
   options: readonly CardOption[];
   value: string | string[];
-  onChange: (value: string | string[]) => void;
+  onChange: (_value: string | string[]) => void;
   isMultiSelect?: boolean;
   columns?: 2 | 3 | 4;
 }
