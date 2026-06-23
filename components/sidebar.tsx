@@ -67,7 +67,7 @@ export function Sidebar() {
       icon: <KeyRound className="h-5 w-5" />,
     },
     {
-      href: "/dashboard/profile/setup",
+      href: "/dashboard/profile",
       label: "Profile",
       icon: <UserCircle className="h-5 w-5" />,
     },

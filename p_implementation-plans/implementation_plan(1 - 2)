@@ -1,0 +1,61 @@
+# Group Invitation & Membership Overhaul (Approved)
+
+Rework the group join flow: approval-gated joins, in-app + email invitations, exit group, "Previous Groups" history.
+
+## Decisions Made
+
+- **User Code**: Each user gets a unique 8-char code (like group invite codes), displayed under their name in the dashboard. Invite by searching name OR user code.
+- **Join flow**: Invite code submits a pending request → creator approves/declines.
+- **`/join/[code]` page**: Kept, but submits a request instead of instant-joining.
+- **Email invitations**: Proceed with Resend (sandbox for dev, verified domain for prod).
+
+## Proposed Changes
+
+### Database Schema — [schema.prisma](file:///j:/PaceUp/prisma/schema.prisma)
+
+New enums: `InvitationStatus` (PENDING/ACCEPTED/DECLINED), `InvitationType` (JOIN_REQUEST/EMAIL_INVITE/IN_APP_INVITE).
+
+New model: `Invitation` — tracks all join requests and invitations with status.
+
+User model: add `userCode String? @unique @db.VarChar(8)` (auto-generated on creation/first access).
+
+GroupMember model: add `isActive Boolean @default(true)`, `leftAt DateTime?`.
+
+---
+
+### New API Routes
+
+| Route | Method | Purpose |
+|---|---|---|
+| `/api/invitations` | GET | Fetch pending in-app invitations for current user |
+| `/api/invitations` | POST | Create invitation (JOIN_REQUEST, IN_APP_INVITE, EMAIL_INVITE) |
+| `/api/invitations/[id]` | PATCH | Accept or decline an invitation |
+| `/api/invitations/count` | GET | Lightweight count for sidebar badge |
+| `/api/groups/[id]/invitations` | GET | Fetch pending requests for a group (creator only) |
+| `/api/groups/[id]/leave` | POST | Leave a group (sets isActive=false) |
+| `/api/groups/[id]/previous` | DELETE | Remove from Previous Groups history |
+| `/api/users/search` | GET | Search users by name or userCode |
+
+### Modified API Routes
+
+| Route | Change |
+|---|---|
+| `/api/groups/join` | Creates JOIN_REQUEST instead of instant join |
+
+### Pages & Components
+
+| File | Change |
+|---|---|
+| `new-group/page.tsx` | Tabbed: Create Group / Join Group / Invite Requests |
+| `sidebar.tsx` | Notification badge for pending invitations |
+| `dashboard/page.tsx` | Split into Active Groups + Previous Groups |
+| `group/[id]/page.tsx` | Invite Members section, Pending Requests, Leave Group button |
+| `join/[code]/page.tsx` | Submit request instead of instant join |
+| `profile/setup/page.tsx` | No change needed (userCode auto-generated) |
+
+### New Files
+
+| File | Purpose |
+|---|---|
+| `lib/email.ts` | Email sending helper using Resend |
+| `lib/invite-code.ts` | Shared code generation utility for user + group codes |

@@ -1,0 +1,93 @@
+# PaceUp Full Redesign Plan
+
+This document outlines the approach to completely redesign the PaceUp application. We will use `shadcn-ui` components and Tailwind CSS plugins to create a sleek, futuristic, and smooth user experience, retaining the existing Doom Neon color theme.
+
+## User Review Required
+
+> [!WARNING]
+> This is a massive redesign covering every page in the application. Please review the proposed list of components and pages that will be touched. Let me know if you have specific preferences for particular pages (e.g., layout of the dashboard).
+
+## Open Questions
+
+1. Should we utilize `framer-motion` for complex animations, or stick strictly to Tailwind CSS keyframes and transitions?
+2. Do you want the `paceup-logo-full.png` exclusively in the navbar/header and `paceup-icon.png` as a favicon/standalone icon, or used somewhere else specifically?
+3. Should we install `lucide-react` for icons since `shadcn-ui` depends on it by default?
+
+## Proposed Changes
+
+### Shadcn Initialization and Styling
+
+We will install several core `shadcn-ui` components and update the CSS.
+- **Components to Install**: `button`, `card`, `input`, `label`, `badge`, `separator`, `avatar`, `tabs`, `dialog`, `form`, `dropdown-menu`, `skeleton`.
+- **CSS**: Refine `globals.css` with a frosted-glass effect (glassmorphism) and smoother neon glow transitions to achieve that "futuristic" feel.
+
+---
+
+### Core UI & Layouts
+
+#### [MODIFY] `app/layout.tsx`
+- Add support for global header and standard container width.
+- Integrate smooth page transitions if desired.
+
+#### [MODIFY] `app/dashboard/layout.tsx`
+- Redesign the sidebar and main content wrapper for the dashboard.
+
+#### [MODIFY] `components/sidebar.tsx`
+- Rebuild using a sleek, glass-like sidebar with neon active states and animated icons.
+
+---
+
+### Public Pages
+
+#### [MODIFY] `app/page.tsx` (Landing Page)
+- Create a high-impact, futuristic Hero section displaying `paceup-logo-full.png`.
+- Add feature cards using the shadcn `Card` component with hover-reveal neon borders.
+- Smooth animations for scrolling and elements entering the viewport.
+
+---
+
+### Authentication Pages
+
+#### [MODIFY] `app/(auth)/sign-in/page.tsx` & `app/(auth)/sign-up/page.tsx`
+- Replace existing simple forms with sleek `Card`-based forms.
+- Utilize shadcn `Input` and `Button` components for a unified, modern look.
+
+---
+
+### Dashboard Pages
+
+#### [MODIFY] `app/dashboard/page.tsx`
+- Create a modern widget-based dashboard.
+- Redesign `previous-group-card.tsx` to match the new `Card` look.
+
+#### [MODIFY] `app/dashboard/new-group/page.tsx`
+- Convert the project brief creation flow into a clean, step-by-step form or a polished single-page form using shadcn `Form` and `Input`/`Textarea`.
+
+#### [MODIFY] `app/dashboard/group/page.tsx`
+- Enhance the project overview.
+- Use `Tabs` for different project views (Roles, Tasks, Settings).
+- Redesign `health-gauge.tsx` to look like a futuristic HUD element.
+
+#### [MODIFY] `app/join/[code]/page.tsx`
+- Redesign the invite acceptance page to be a focused, centered, glowing card displaying the group details.
+
+---
+
+### Components Refactoring
+
+#### [MODIFY] `components/group-invite-panel.tsx`
+- Upgrade the complex invite panel using modern inputs, dialogs, and toast notifications.
+
+#### [MODIFY] `components/status-badge.tsx`
+- Use the shadcn `Badge` as the foundation but add custom neon variants.
+
+#### [MODIFY] `components/copy-button.tsx`
+- Enhance with a modern tooltip and smooth success animation.
+
+## Verification Plan
+
+### Manual Verification
+- Verify that every page renders correctly with the new UI.
+- Verify that all interactive elements (buttons, inputs, dropdowns) have appropriate hover, focus, and active states.
+- Ensure the neon aesthetics are intact and feel premium.
+- Test responsivenes on mobile and desktop viewports.

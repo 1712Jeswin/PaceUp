@@ -1,0 +1,139 @@
+# Walkthrough — Data Freshness, AI Model, Brief Flow, Doc Upload
+
+## Prerequisites Before Testing
+
+> [!IMPORTANT]
+> **Restart your dev server** (`Ctrl+C` then `npm run dev`). The Prisma client needs to regenerate for the new schema changes, and the file was locked by the running process.
+
+> [!IMPORTANT]
+> **Re-save your AI key.** Go to Settings → AI Keys → delete the existing Gemini key → add a new one with model `gemini-2.5-flash` (or `gemini-2.0-flash`). The old `gemini-1.5-pro` model no longer exists.
+
+---
+
+## Changes Made
+
+### Fix 1 — Data Freshness (No More 15-20s Delays)
+
+**Root cause**: Next.js Server Components cache database queries. After a mutation (create group, accept invite, etc.), the old cached data was served until the cache expired.
+
+**What changed**:
+
+#### `export const dynamic = 'force-dynamic'` added to 5 pages:
+- [dashboard/page.tsx](file:///j:/PaceUp/app/dashboard/page.tsx#L1) — Active/Previous Groups list
+- [dashboard/group/[id]/page.tsx](file:///j:/PaceUp/app/dashboard/group/[id]/page.tsx#L1) — Group Dashboard
+- [dashboard/group/[id]/tasks/page.tsx](file:///j:/PaceUp/app/dashboard/group/[id]/tasks/page.tsx#L1) — Task Board
+- [join/[code]/page.tsx](file:///j:/PaceUp/app/join/[code]/page.tsx#L1) — Join page
+
+This tells Next.js: "never cache this page — always run the server component fresh."
+
+#### `revalidatePath()` added to 10 mutation API routes:
+| Route | Paths Revalidated |
+|---|---|
+| [POST /api/groups](file:///j:/PaceUp/app/api/groups/route.ts) | `/dashboard` |
+| [POST /api/groups/join](file:///j:/PaceUp/app/api/groups/join/route.ts) | `/dashboard`, `/dashboard/group/[id]` |
+| [POST /api/invitations](file:///j:/PaceUp/app/api/invitations/route.ts) | `/dashboard`, `/dashboard/group/[id]` |
+| [PATCH /api/invitations/[id]](file:///j:/PaceUp/app/api/invitations/[id]/route.ts) | `/dashboard`, `/dashboard/group/[id]` |
+| [POST /api/groups/[id]/leave](file:///j:/PaceUp/app/api/groups/[id]/leave/route.ts) | `/dashboard`, `/dashboard/group/[id]` |
+| [DELETE /api/groups/[id]/previous](file:///j:/PaceUp/app/api/groups/[id]/previous/route.ts) | `/dashboard` |
+| [POST /api/briefs](file:///j:/PaceUp/app/api/briefs/route.ts) | `/dashboard/group/[id]` |
+| [POST /api/ai/assign-tasks](file:///j:/PaceUp/app/api/ai/assign-tasks/route.ts) | `/dashboard/group/[id]`, tasks page, `/dashboard` |
+| [PATCH /api/profile](file:///j:/PaceUp/app/api/profile/route.ts) | `/dashboard` |
+| [PATCH /api/tasks/[id]](file:///j:/PaceUp/app/api/tasks/[id]/route.ts) | tasks page, group page |
+
+**How to verify**:
+1. Open two browser tabs: one as user A, one as user B (incognito or different Clerk account).
+2. User A creates a group → User B sends a join request via invite code.
+3. **Without refreshing**, check User A's group dashboard → the pending request should appear within 1-2 seconds.
+4. User A accepts the request → User B's dashboard should show the group immediately.
+
+---
+
+### Fix 2 — Gemini Model Name
+
+**What changed**: [lib/ai.ts](file:///j:/PaceUp/lib/ai.ts#L16) — model list updated from `gemini-1.5-pro` / `gemini-1.5-flash` to `gemini-2.5-flash` / `gemini-2.0-flash`.
+
+**How to verify**:
+1. Go to Settings → AI Keys.
+2. Delete your existing Gemini key.
+3. Add a new key with provider "Gemini (Google)" and model `gemini-2.5-flash`.
+4. Submit a project brief → AI should successfully assign tasks (no more 404 error).
+
+---
+
+### Fix 3 — Brief + AI Failure Loop
+
+**Problem**: If the AI failed, the brief was saved. Retrying said "brief already exists" (409).
+
+**What changed**:
+- [briefs/route.ts](file:///j:/PaceUp/app/api/briefs/route.ts#L119-L155) — If a DRAFT brief exists, **update** it instead of rejecting with 409. Only lock after ANALYSED.
+- [ai/assign-tasks/route.ts](file:///j:/PaceUp/app/api/ai/assign-tasks/route.ts#L208-L226) — If brief status is ANALYSED, delete existing tasks and reset to DRAFT before re-running.
+- [brief/page.tsx](file:///j:/PaceUp/app/dashboard/group/[id]/brief/page.tsx) — Added `router.refresh()` after submit.
+
+**How to verify**:
+1. Submit a brief → let AI run.
+2. If AI fails (intentionally use a bad key to test): the error message shows but clicking "Submit Brief & Assign Tasks" again will work — no more "brief already exists" error.
+
+---
+
+### Fix 4 — Empty Task Board
+
+**What changed**: [tasks/page.tsx](file:///j:/PaceUp/app/dashboard/group/[id]/tasks/page.tsx#L103-L126) — When a brief exists but tasks array is empty, shows a message:
+- DRAFT status: *"A project brief exists, but AI task assignment hasn't been completed yet."* + "Retry AI Assignment" button (for creator only).
+- ANALYSED status: *"No tasks were generated for this project."* + "Re-submit Brief" button.
+
+**How to verify**:
+1. Create a group and submit a brief where the AI fails.
+2. Navigate to the Task Board → you should see the explanation message + retry button.
+
+---
+
+### Fix 5 — Email From Address
+
+**What changed**: [lib/email.ts](file:///j:/PaceUp/lib/email.ts#L8) — Now reads `RESEND_FROM_EMAIL` from environment variables. Added response logging for debugging.
+
+> [!WARNING]
+> Resend sandbox (`onboarding@resend.dev`) only delivers to **your own Resend account email**. For real email delivery to other people, you need a verified domain in Resend. This is a Resend policy, not a code issue.
+
+---
+
+### Fix 6 — Document Upload for Brief
+
+**New files**:
+- [api/briefs/parse/route.ts](file:///j:/PaceUp/app/api/briefs/parse/route.ts) — Accepts PDF, DOCX, TXT, MD files via FormData. Uses `pdf-parse` (v2) for PDFs, `mammoth` for DOCX. Sends extracted text to the user's AI model to parse into the 4 brief fields.
+
+**Modified files**:
+- [brief/page.tsx](file:///j:/PaceUp/app/dashboard/group/[id]/brief/page.tsx) — Two-mode toggle: "Paste Text" vs "Upload Document". On upload, file is parsed → fields are populated → user reviews → submits.
+
+**How to verify**:
+1. Go to a group's Brief page.
+2. Click "Upload Document" toggle.
+3. Upload a PDF or DOCX file containing project information.
+4. Wait for AI parsing (spinner shows) → fields auto-populate.
+5. View switches to "Paste Text" mode with fields pre-filled → review and edit → submit.
+
+---
+
+## Summary of Files Changed
+
+| File | Change |
+|---|---|
+| [dashboard/page.tsx](file:///j:/PaceUp/app/dashboard/page.tsx) | `force-dynamic` |
+| [group/[id]/page.tsx](file:///j:/PaceUp/app/dashboard/group/[id]/page.tsx) | `force-dynamic` |
+| [tasks/page.tsx](file:///j:/PaceUp/app/dashboard/group/[id]/tasks/page.tsx) | `force-dynamic` + empty state + retry link |
+| [join/[code]/page.tsx](file:///j:/PaceUp/app/join/[code]/page.tsx) | `force-dynamic` |
+| [groups/route.ts](file:///j:/PaceUp/app/api/groups/route.ts) | `revalidatePath` |
+| [groups/join/route.ts](file:///j:/PaceUp/app/api/groups/join/route.ts) | `revalidatePath` |
+| [invitations/route.ts](file:///j:/PaceUp/app/api/invitations/route.ts) | `revalidatePath` |
+| [invitations/[id]/route.ts](file:///j:/PaceUp/app/api/invitations/[id]/route.ts) | `revalidatePath` |
+| [groups/[id]/leave/route.ts](file:///j:/PaceUp/app/api/groups/[id]/leave/route.ts) | `revalidatePath` |
+| [groups/[id]/previous/route.ts](file:///j:/PaceUp/app/api/groups/[id]/previous/route.ts) | `revalidatePath` |
+| [briefs/route.ts](file:///j:/PaceUp/app/api/briefs/route.ts) | Idempotent DRAFT update + `revalidatePath` |
+| [ai/assign-tasks/route.ts](file:///j:/PaceUp/app/api/ai/assign-tasks/route.ts) | Re-run support + `revalidatePath` |
+| [profile/route.ts](file:///j:/PaceUp/app/api/profile/route.ts) | `revalidatePath` |
+| [tasks/[id]/route.ts](file:///j:/PaceUp/app/api/tasks/[id]/route.ts) | `revalidatePath` |
+| [lib/ai.ts](file:///j:/PaceUp/lib/ai.ts) | Updated Gemini models |
+| [lib/email.ts](file:///j:/PaceUp/lib/email.ts) | Env-var from address + logging |
+| [brief/page.tsx](file:///j:/PaceUp/app/dashboard/group/[id]/brief/page.tsx) | Two-mode input (text/upload) |
+| **[NEW]** [briefs/parse/route.ts](file:///j:/PaceUp/app/api/briefs/parse/route.ts) | Document upload + AI parsing |
+
+**Dependencies added**: `pdf-parse@2.4.5`, `mammoth`
