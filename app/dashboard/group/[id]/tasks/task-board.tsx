@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { StatusBadge } from "@/components/status-badge";
-import type { TaskStatus } from "@/types";
-import { ChevronRight, Clock } from "lucide-react";
+import { ReviewBadge } from "@/components/review-badge";
+import type { TaskStatus, ReviewResult } from "@/types";
+import { ChevronRight, Clock, Loader2, ScanLine } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -52,10 +53,13 @@ export function TaskBoard({
   memberTasks,
   roleMap,
   currentUserId,
-  isCreator: _isCreator,
+  isCreator,
 }: TaskBoardProps) {
   const router = useRouter();
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
+  const [reviewingTaskId, setReviewingTaskId] = useState<string | null>(null);
+  // Map of taskId → latest review result (populated after a review is triggered)
+  const [reviewResults, setReviewResults] = useState<Record<string, ReviewResult>>({});
 
   const handleStatusUpdate = async (taskId: string, newStatus: TaskStatus) => {
     setUpdatingTaskId(taskId);
@@ -76,6 +80,32 @@ export function TaskBoard({
       // Silently fail — user can retry
     } finally {
       setUpdatingTaskId(null);
+    }
+  };
+
+  /**
+   * Triggers AI code review for a DONE task.
+   * Only the group creator can request a review.
+   */
+  const handleRequestReview = async (taskId: string) => {
+    setReviewingTaskId(taskId);
+
+    try {
+      const res = await fetch("/api/ai/review-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskId }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setReviewResults((prev) => ({ ...prev, [taskId]: data.data.result as ReviewResult }));
+      }
+    } catch {
+      // Silently fail — user can retry
+    } finally {
+      setReviewingTaskId(null);
     }
   };
 
@@ -167,28 +197,55 @@ export function TaskBoard({
                       </p>
                     </div>
 
-                    <div className="flex items-center justify-between pt-4 border-t border-border/50 mt-auto">
-                      <div className="flex items-center gap-1.5 text-[10px] text-text-muted font-mono uppercase tracking-wider">
-                        <Clock className="w-3 h-3" />
-                        <span>Est. {task.estimatedDays} {task.estimatedDays === 1 ? "day" : "days"}</span>
+                    <div className="flex flex-col gap-3 pt-4 border-t border-border/50 mt-auto">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-[10px] text-text-muted font-mono uppercase tracking-wider">
+                          <Clock className="w-3 h-3" />
+                          <span>Est. {task.estimatedDays} {task.estimatedDays === 1 ? "day" : "days"}</span>
+                        </div>
+
+                        {canUpdate && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleStatusUpdate(task.id, nextStatus)}
+                            disabled={updatingTaskId === task.id}
+                            className="h-7 px-3 text-xs font-mono bg-accent-green/10 text-accent-green hover:bg-accent-green/20 border border-accent-green/20"
+                          >
+                            {updatingTaskId === task.id ? (
+                              <div className="h-3 w-3 border-2 border-accent-green border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <>
+                                {NEXT_STATUS_LABEL[task.status]}
+                                <ChevronRight className="h-3 w-3 ml-1" />
+                              </>
+                            )}
+                          </Button>
+                        )}
                       </div>
 
-                      {canUpdate && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleStatusUpdate(task.id, nextStatus)}
-                          disabled={updatingTaskId === task.id}
-                          className="h-7 px-3 text-xs font-mono bg-accent-green/10 text-accent-green hover:bg-accent-green/20 border border-accent-green/20"
-                        >
-                          {updatingTaskId === task.id ? (
-                            <div className="h-3 w-3 border-2 border-accent-green border-t-transparent rounded-full animate-spin" />
+                      {/* Request Review — only for creator on DONE tasks */}
+                      {isCreator && task.status === "DONE" && (
+                        <div className="flex items-center justify-between">
+                          {reviewResults[task.id] ? (
+                            <ReviewBadge result={reviewResults[task.id]} />
                           ) : (
-                            <>
-                              {NEXT_STATUS_LABEL[task.status]}
-                              <ChevronRight className="h-3 w-3 ml-1" />
-                            </>
+                            <Button
+                              size="sm"
+                              onClick={() => handleRequestReview(task.id)}
+                              disabled={reviewingTaskId === task.id}
+                              className="h-7 px-3 text-xs font-mono bg-accent-blue/10 text-accent-blue hover:bg-accent-blue/20 border border-accent-blue/20"
+                            >
+                              {reviewingTaskId === task.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <>
+                                  <ScanLine className="h-3 w-3 mr-1" />
+                                  AI Review
+                                </>
+                              )}
+                            </Button>
                           )}
-                        </Button>
+                        </div>
                       )}
                     </div>
                   </div>

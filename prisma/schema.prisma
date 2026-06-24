@@ -48,6 +48,33 @@ enum InvitationType {
   IN_APP_INVITE
 }
 
+// Phase 2 enums
+
+enum PRStatus {
+  OPEN
+  MERGED
+  CLOSED
+}
+
+enum ConfidenceLevel {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum NotificationType {
+  TASK_OVERDUE
+  STANDUP_MISSING
+  CONFLICT_DETECTED
+  REVIEW_REQUIRED
+}
+
+enum ReviewResult {
+  PASS
+  FAIL
+  NEEDS_REVISION
+}
+
 // ============================================
 // MODELS
 // ============================================
@@ -72,6 +99,8 @@ model User {
   aiKeys               AIKey[]
   invitationsReceived  Invitation[]  @relation("InvitationTarget")
   invitationsInitiated Invitation[]  @relation("InvitationInitiator")
+  standups             StandupResponse[]
+  notifications        Notification[]
 
   @@index([clerkId])
   @@index([email])
@@ -87,9 +116,19 @@ model Group {
   createdBy   User     @relation("GroupCreator", fields: [createdById], references: [id])
   createdAt   DateTime @default(now())
 
-  members      GroupMember[]
-  projectBrief ProjectBrief?
-  invitations  Invitation[]
+  // Phase 2: GitHub integration fields
+  githubRepoUrl   String?
+  githubWebhookId String?
+  githubPat       String?  @db.Text  // Encrypted GitHub PAT for webhook registration
+
+  members        GroupMember[]
+  projectBrief   ProjectBrief?
+  invitations    Invitation[]
+  commits        Commit[]
+  pullRequests   PullRequest[]
+  conflictAlerts ConflictAlert[]
+  standups       StandupResponse[]
+  notifications  Notification[]
 
   @@index([inviteCode])
   @@index([createdById])
@@ -146,8 +185,10 @@ model Task {
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
-  projectBrief ProjectBrief @relation(fields: [projectBriefId], references: [id], onDelete: Cascade)
-  assignedUser User         @relation(fields: [assignedUserId], references: [id])
+  projectBrief   ProjectBrief   @relation(fields: [projectBriefId], references: [id], onDelete: Cascade)
+  assignedUser   User           @relation(fields: [assignedUserId], references: [id])
+  commitLinks    CommitTaskLink[]
+  codeReviews    CodeReview[]
 
   @@index([projectBriefId])
   @@index([assignedUserId])
@@ -201,4 +242,126 @@ model Invitation {
   @@index([groupId])
   @@index([userId])
   @@index([status])
+}
+
+// ============================================
+// PHASE 2 MODELS
+// ============================================
+
+/// A Git commit ingested from a GitHub webhook push event.
+model Commit {
+  id                   String   @id @default(cuid())
+  groupId              String
+  authorGithubUsername String
+  sha                  String   @unique
+  message              String   @db.Text
+  filesChanged         Json     @default("[]")  // JSON array of filenames
+  timestamp            DateTime
+  createdAt            DateTime @default(now())
+
+  group     Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  taskLinks CommitTaskLink[]
+
+  @@index([groupId])
+  @@index([sha])
+  @@index([groupId, timestamp])
+}
+
+/// A pull request ingested from a GitHub webhook pull_request event.
+model PullRequest {
+  id                   String   @id @default(cuid())
+  groupId              String
+  number               Int
+  title                String
+  authorGithubUsername String
+  status               PRStatus @default(OPEN)
+  createdAt            DateTime @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, number])
+  @@index([groupId])
+}
+
+/// Links a commit to a task with AI-determined confidence.
+model CommitTaskLink {
+  id         String          @id @default(cuid())
+  commitId   String
+  taskId     String
+  confidence ConfidenceLevel
+  createdAt  DateTime        @default(now())
+
+  commit Commit @relation(fields: [commitId], references: [id], onDelete: Cascade)
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([commitId, taskId])
+  @@index([commitId])
+  @@index([taskId])
+}
+
+/// Tracks file conflicts when multiple members edit the same file on the same day.
+model ConflictAlert {
+  id         String    @id @default(cuid())
+  groupId    String
+  filename   String
+  memberIds  Json      @default("[]")  // JSON array of user IDs involved
+  detectedAt DateTime  @default(now())
+  resolvedAt DateTime?
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+  @@index([groupId, resolvedAt])
+}
+
+/// A daily standup response from a team member.
+model StandupResponse {
+  id           String   @id @default(cuid())
+  userId       String
+  groupId      String
+  date         DateTime @db.Date  // Date only, no time component
+  didYesterday String   @db.Text
+  planToday    String   @db.Text
+  blockers     String?  @db.Text
+  submittedAt  DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId, date])
+  @@index([groupId, date])
+  @@index([userId])
+}
+
+/// In-app notification for nag loop alerts, review results, etc.
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  groupId   String?
+  type      NotificationType
+  message   String           @db.Text
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, readAt])
+  @@index([groupId])
+}
+
+/// AI code review result for a task.
+model CodeReview {
+  id         String       @id @default(cuid())
+  taskId     String
+  reviewedBy String       // userId of the group creator who triggered the review
+  result     ReviewResult
+  feedback   String       @db.Text
+  issues     Json         @default("[]")  // JSON array of issue strings
+  createdAt  DateTime     @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
 }

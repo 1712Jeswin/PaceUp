@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { CopyButton } from "@/components/copy-button";
 import { HealthGauge } from "@/components/health-gauge";
 import { GroupInvitePanel } from "@/components/group-invite-panel";
-import { ArrowRight, FileText, ListTodo, Users, ShieldAlert } from "lucide-react";
+import { ArrowRight, FileText, ListTodo, Users, ShieldAlert, GitCommit, MessageSquare, Settings } from "lucide-react";
 import { getOrCreateUser } from "@/lib/user";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -189,6 +189,38 @@ export default async function GroupDashboardPage({ params }: GroupDashboardProps
                   <span className="flex items-center gap-2">
                     <ListTodo className="h-4 w-4" />
                     Task Board
+                  </span>
+                  <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </Button>
+            )}
+
+            <Button asChild variant="outline" className="w-full h-12 glass-panel hover:border-accent-blue/50 hover:text-accent-blue transition-all group">
+              <Link href={`/dashboard/group/${groupId}/commits`} className="flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <GitCommit className="h-4 w-4" />
+                  Commit Feed
+                </span>
+                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </Button>
+
+            <Button asChild variant="outline" className="w-full h-12 glass-panel hover:border-accent-green/50 hover:text-accent-green transition-all group">
+              <Link href={`/dashboard/group/${groupId}/standup`} className="flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  Daily Standup
+                </span>
+                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </Button>
+
+            {isCreator && (
+              <Button asChild variant="outline" className="w-full h-12 glass-panel hover:border-accent-gold/50 hover:text-accent-gold transition-all group">
+                <Link href={`/dashboard/group/${groupId}/settings`} className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Settings className="h-4 w-4" />
+                    Group Settings
                   </span>
                   <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
