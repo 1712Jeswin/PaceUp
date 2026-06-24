@@ -1,4 +1,4 @@
-import type { AIProvider, TaskStatus, UserLevel, BriefStatus, InvitationStatus, InvitationType } from "@prisma/client";
+import type { AIProvider, TaskStatus, UserLevel, BriefStatus, InvitationStatus, InvitationType, PRStatus, ConfidenceLevel, NotificationType, ReviewResult } from "@prisma/client";
 
 // ============================================
 // API Response
@@ -437,3 +437,29 @@ export const PROFILE_STEPS: ProfileStep[] = [
 // ============================================
 
 export type { AIProvider, TaskStatus, UserLevel, BriefStatus, InvitationStatus, InvitationType };
+
+// Phase 2 re-exports
+export type { PRStatus, ConfidenceLevel, NotificationType, ReviewResult };
+
+// ============================================
+// Phase 2 — Data Shapes
+// ============================================
+
+/**
+ * Shape of the standup form submission.
+ */
+export interface StandupFormData {
+  groupId: string;
+  didYesterday: string;
+  planToday: string;
+  blockers?: string;
+}
+
+/**
+ * Shape of a code review result returned from the AI.
+ */
+export interface CodeReviewResult {
+  result: ReviewResult;
+  feedback: string;
+  issues: string[];
+}

@@ -12,6 +12,7 @@ import {
   UserCircle,
   Plus,
 } from "lucide-react";
+import { NotificationBell } from "@/components/notification-bell";
 
 interface SidebarLink {
   href: string;
@@ -76,7 +77,7 @@ export function Sidebar() {
   return (
     <aside className="hidden md:flex flex-col w-64 h-screen bg-bg-secondary/60 backdrop-blur-xl border-r border-border/50 fixed left-0 top-0 z-40 shadow-xl">
       {/* Logo */}
-      <div className="flex items-center justify-start px-6 py-6 border-b border-border/50">
+      <div className="flex items-center justify-between px-6 py-6 border-b border-border/50">
         <Link href="/dashboard" className="flex items-center gap-3 transition-transform hover:scale-105">
           <div className="relative w-8 h-8">
             <Image
@@ -89,6 +90,7 @@ export function Sidebar() {
           </div>
           <span className="text-2xl font-display font-bold text-text-primary tracking-wide">PaceUp</span>
         </Link>
+        <NotificationBell />
       </div>
 
       {/* Navigation */}
